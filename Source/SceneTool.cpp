@@ -63,6 +63,8 @@ void SceneTool::Initialize()
 	m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
 
 	m_chapter = std::make_unique<Chapter>();
+
+	//SAMMARY
 }
 
 void SceneTool::Finalize()
