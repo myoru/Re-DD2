@@ -69,7 +69,7 @@ void SceneTool::Initialize()
 
 void SceneTool::Finalize()
 {
-
+	//TEst
 }
 
 void SceneTool::Update(float a_elapsedTime)
