@@ -41,6 +41,8 @@ void SceneTool::Initialize()
 	Graphics& _graphics = Graphics::Instance();
 	ID3D11Device* _device = _graphics.GetDevice();
 	ID3D11DeviceContext* _deviceContext = _graphics.GetDeviceContext();
+	AllFacialSet& _allFacIns = AllFacialSet::Instance();
+	auto _allFacialSet = _allFacIns.GetAllFacialSet();
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
@@ -51,10 +53,12 @@ void SceneTool::Initialize()
 	m_cb_fade->data.Initialize(5.0f, 1.0f, 1, 1, 0);
 
 	m_spriteBox.emplace_back(std::make_unique<Sprite>(nullptr, BasePoint::LeftTop));
-	m_spriteBox.emplace_back(std::make_unique<Sprite>(L".\\Data\\Sprite\\SlideTriangle.png"));
 	m_spriteBox.emplace_back(std::make_unique<Sprite>(L".\\Data\\Sprite\\Number.png"));
-	m_spriteBox.emplace_back(std::make_unique<Sprite>(L".\\Data\\Sprite\\DustBox.png"));
-	m_spriteBox.emplace_back(std::make_unique<Sprite>(L".\\Data\\Sprite\\Add.png"));
+
+	m_rectUIs["LTriangle"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\SlideTriangle.png");
+	m_rectUIs["RTriangle"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\SlideTriangle.png");
+	m_rectUIs["Add"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\Add.png", BasePoint::RightTop);
+	m_rectUIs["DustBox"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\DustBox.png", BasePoint::RightBottom);
 
 	m_reviewScreenPos = { (_graphics.GetScreenWidth() * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) + (_graphics.GetScreenWidth() * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) / 2.0f),
 		(_graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]) / 2.0f };
@@ -63,11 +67,36 @@ void SceneTool::Initialize()
 	m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
 
 	m_chapter = std::make_unique<Chapter>();
+	std::string _input_json_name = "./Data/Json/";
+	_input_json_name += "/Chapter/";
+	_input_json_name += "Test";
+	_input_json_name += ".json";
+	Chapter::LoadSlideValue(_input_json_name.c_str(), *m_chapter);
+
+	for (auto _slide : m_chapter->GetSlides())
+	{
+		for (auto _character : _slide.m_characters)
+		{
+			std::string _key = _character->name;
+			auto _facialSetItr = std::find_if(
+				_allFacialSet.begin(), _allFacialSet.end(),
+				[&](std::pair<std::string, std::shared_ptr<FacialSet>>& pair)
+				{
+					return pair.first == _key;
+				}
+			);
+			_character->facialSet = _facialSetItr->second;
+		}
+	}
 }
 
 void SceneTool::Finalize()
 {
-
+	std::string _output_json_name = "./Data/Json/";
+	_output_json_name += "/Chapter/";
+	_output_json_name += "Test";
+	_output_json_name += ".json";
+	Chapter::SaveSlideValue(_output_json_name.c_str(), *m_chapter);
 }
 
 void SceneTool::Update(float a_elapsedTime)
@@ -78,7 +107,6 @@ void SceneTool::Update(float a_elapsedTime)
 	Keyboard& _keyboard = Input::Instance().GeKeyboard();
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
-	using TriangleType = SlideTriangle::TriangleType;
 
 	//F2を押すと最大スケールでレビュー画面で表示される
 	if (_keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
@@ -139,7 +167,7 @@ void SceneTool::Update(float a_elapsedTime)
 			m_reviewScreenLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
 			m_reviewScreenRightBottomPos = CalcSquareRightBottomPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
 			//もし、縦のサイズが大きすぎたら、
-			if (m_reviewScreenLeftTopPos.y < _graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] * 0.05f)
+			if (m_reviewScreenSize.y > _graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] * m_reviewOffsetScale)
 			{
 				//縦のサイズを補正してからそれに対応する横のサイズを画面のアスペクト比を用いて計算
 				m_reviewScreenSize.y = _graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] * m_reviewOffsetScale;
@@ -165,17 +193,19 @@ void SceneTool::Update(float a_elapsedTime)
 			}
 		}
 
-		m_slideTriangle.scaleX = (1.0f - m_reviewOffsetScale) * 0.4f;
+		m_blackSpaceSize.x = m_reviewScreenLeftTopPos.x - (m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f);
+		m_blackSpaceSize.y = m_reviewScreenLeftTopPos.y;
+		float _minBlackSpace = m_blackSpaceSize.x <= m_blackSpaceSize.y ? m_blackSpaceSize.x : m_blackSpaceSize.y;
 
-		m_slideTriangle.offsetX = m_reviewScreenLeftTopPos.x - (m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f);
-		m_slideTriangle.position[sc_i(TriangleType::Left)] = { m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + (m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f) + (m_slideTriangle.offsetX * 0.5f) ,m_reviewScreenPos.y };
-		m_slideTriangle.position[sc_i(TriangleType::Right)] = { m_reviewScreenRightBottomPos.x + m_slideTriangle.offsetX * 0.5f,m_reviewScreenPos.y };
-		m_slideTriangle.size = { m_slideTriangle.scaleX * (_screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) ,0.0f }; m_slideTriangle.size.y = m_slideTriangle.size.x * m_spriteBox.at(sc_i(SpriteKind::Triangle))->GetAspectRation();
+		m_rectUIs["LTriangle"]->position = { m_reviewScreenLeftTopPos.x - _minBlackSpace / 2.0f ,m_reviewScreenPos.y };
+		m_rectUIs["RTriangle"]->position = { m_reviewScreenRightBottomPos.x + _minBlackSpace / 2.0f,m_reviewScreenPos.y };
+		m_rectUIs["LTriangle"]->size.x = m_rectUIs["RTriangle"]->size.x = _minBlackSpace * 0.8f;
+		m_rectUIs["LTriangle"]->size.y = m_rectUIs["RTriangle"]->size.y = m_rectUIs["LTriangle"]->size.x * m_rectUIs["LTriangle"]->sprite->GetAspectRation();
 
-		m_dustBoxPos = { _screenSize.x, m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)].y - m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f };
-		m_dustBoxSize.x = m_dustBoxSize.y = m_slideTriangle.size.x;
-		m_addIconPos = { _screenSize.x, 0.0f };
-		m_addIconSize = m_dustBoxSize;
+		m_rectUIs["DustBox"]->position = { _screenSize.x, m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)].y - m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f };
+		m_rectUIs["DustBox"]->size.x = m_rectUIs["DustBox"]->size.y = m_rectUIs["LTriangle"]->size.x;
+		m_rectUIs["Add"]->position = { _screenSize.x, 0.0f };
+		m_rectUIs["Add"]->size = m_rectUIs["DustBox"]->size;
 	}
 
 	//看板(m_signBoard)が一つでも登録されていれば
@@ -187,17 +217,52 @@ void SceneTool::Update(float a_elapsedTime)
 			m_signBoards.at(i)->Update(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		}
 	}
-
 	CharactersUpdate(a_elapsedTime);
+
+	for (const auto& [_, _rectUI] : m_rectUIs)
+	{
+		_rectUI->Update(a_elapsedTime);
+	}
 
 	//ギズモが操作されていなければ
 	if (!m_usingGuizmo)
 	{
 		//マウスと分割線の当り判定を行う
 		m_screenSeparateLine.MouseHitCheck();
-		MouseVsTriangles();
-		MouseVsDustBox();
-		MouseVsAddIcon();
+		if (m_rectUIs["LTriangle"]->MouseHitCheck(_mouse))
+		{
+			if (m_slideIndex > 0 && _mouse.GetButtonDown() & Mouse::BTN_LEFT)
+			{
+				m_slideIndex--;
+			}
+		}
+		if (m_rectUIs["RTriangle"]->MouseHitCheck(_mouse))
+		{
+			if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
+			{
+				m_slideIndex++;
+				if (m_chapter->GetSlides().size() == m_slideIndex)
+				{
+					m_chapter->GetSlides().emplace_back(Slide());
+				}
+			}
+		}
+		if (m_chapter->GetSlides().size() >= 2)
+		{
+			if (m_rectUIs["DustBox"]->MouseHitCheck(_mouse))
+			{
+				m_chapter->GetSlides().erase(m_chapter->GetSlides().begin() + m_slideIndex);
+				if (m_slideIndex >= m_chapter->GetSlides().size())
+				{
+					m_slideIndex = m_chapter->GetSlides().size() - 1;
+				}
+			}
+		}
+		if (m_rectUIs["Add"]->MouseHitCheck(_mouse))
+		{
+			m_chapter->GetSlides().insert(m_chapter->GetSlides().begin() + m_slideIndex + 1, Slide());
+			m_slideIndex++;
+		}
 	}
 
 	m_eventWindowRate = (1.0f - m_charactersWindowRate) / 3.0f;
@@ -206,13 +271,67 @@ void SceneTool::Update(float a_elapsedTime)
 	m_eventWindowDrawStartPos.x = _screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
 	m_eventWindowDrawStartPos.y = _screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
 	m_slideWindowHeight = _screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
+
+	if (m_lines.size())
+	{
+		int i = 0;
+		/*float _remainedDIstance = (1.0f - (lineNormalizeWallDistance * 2.0f));*/
+		/*if (m_lines.size() % 2 == 1)
+		{
+			for (float _linePos : m_lines)
+			{
+				_linePos = _remainedDIstance
+					i++;
+			}
+		}
+		else
+		{
+			for (float _linePos : m_lines)
+			{
+				_linePos = _remainedDIstance
+					i++;
+			}
+		}*/
+		float _remainedSpace = 1.0f - lineNormalizeWallDistance;
+		/*float ditanseRate = (1.0f - lineNormalizeDistance);*/
+		//float ggg = 1.0f / m_lines.size();
+		if (m_lines.size() == 1)
+		{
+			m_lines[0] = 0.5f;
+		}
+		else
+		{
+			float _lineToLineSpace = _remainedSpace / (m_lines.size() - 1);
+			float _lineStartPosition = lineNormalizeWallDistance / 2.0f + (_remainedSpace * (1.0f - lineNormalizeDistance) / 2.0f);
+			for (float& _linePos : m_lines)
+			{
+				if (i == 0)
+				{
+					_linePos = _lineStartPosition;
+				}
+				else
+				{
+					_linePos = _lineStartPosition + (_lineToLineSpace * lineNormalizeDistance * i);
+				}
+				i++;
+			}
+		}
+	}
 }
 
 void SceneTool::CharactersUpdate(float a_elapsedTime)
 {
-	if (m_chapter && m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().size())
+	if (m_chapter && m_chapter->GetSlides()[m_slideIndex].m_characters.size())
 	{
-		m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
+		for (auto& _slide : m_chapter->GetSlides())
+		{
+			_slide.DeleteCharacter();
+		}
+
+		for (int i = 0, iEnd = m_chapter->GetSlides()[m_slideIndex].m_characters.size(); i < iEnd; i++)
+		{
+			m_chapter->GetSlides()[m_slideIndex].m_characters[i]->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
+		}
 	}
 }
 
@@ -224,7 +343,6 @@ void SceneTool::Render(float elapsedTime)
 	Mouse& _mouse = Input::Instance().GetMouse();
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
-	using TriangleType = SlideTriangle::TriangleType;
 
 	//画面サイズ
 	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
@@ -244,6 +362,48 @@ void SceneTool::Render(float elapsedTime)
 		_rendering_state->SetRasterizerState(_immediate_context, RASTERIZER_STATE::CULL_NONE);
 
 		m_spriteBox.at(sc_i(SpriteKind::White))->Render(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize, 0.0f, m_reviewScreenColor);
+
+		//キャラクター描画
+		{
+			/*for (int i = 0, iEnd = m_chapter->GetSlides()[m_slideIndex].m_characters.size(); i < iEnd; i++)
+			{
+				int _facialIndex = m_chapter->GetSlides()[m_slideIndex].m_characters.at(i)->facialIndex;
+				m_chapter->GetSlides()[m_slideIndex].m_characters[i]->ToolRender(_facialIndex, BasePoint::Center);
+			}*/
+
+			m_chapter->GetSlides()[m_slideIndex].Render(m_reviewScreenLeftTopPos, m_reviewScreenSize);
+		}
+
+		//看板(m_signBoard)が一つでも登録されていれば
+		if (m_signBoards.size())
+		{
+			////描画(背景のボード)処理を行う
+			//for (int i = 0; i < m_signBoards.size(); i++)
+			//{
+			//	m_signBoards.at(i)->BoardRender();
+			//}
+			////描画(テキスト)処理を行う
+			//for (int i = 0; i < m_signBoards.size(); i++)
+			//{
+			//	m_signBoards.at(i)->TextRender();
+			//}
+			for (int i = 0; i < m_signBoards.size(); i++)
+			{
+				m_signBoards.at(i)->ToolRender(m_reviewFullScreenTestFlag);
+			}
+		}
+
+		if (m_lines.size())
+		{
+			for (const float _line : m_lines)
+			{
+				float _posX = m_reviewScreenLeftTopPos.x + m_reviewScreenSize.x * _line;
+				m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::Top, { _posX,m_reviewScreenLeftTopPos.y }, { m_reviewScreenSize.x / 300.0f,m_reviewScreenSize.y }, 0.0f, { 1.0f,0.0f,0.0f,1.0f });
+			}
+			m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::LeftTop, m_reviewScreenLeftTopPos, { m_reviewScreenSize.x * lineNormalizeWallDistance / 2.0f,m_reviewScreenSize.y }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
+			m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::RightTop, { m_reviewScreenRightBottomPos.x,m_reviewScreenLeftTopPos.y }, { m_reviewScreenSize.x * lineNormalizeWallDistance / 2.0f,m_reviewScreenSize.y }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
+		}
+
 		//ページ数描画
 		{
 			if (m_chapter && m_chapter->GetSlides().size())
@@ -274,25 +434,6 @@ void SceneTool::Render(float elapsedTime)
 					}
 					offset_x -= _slideNumSize.x;
 				}
-			}
-		}
-
-		//看板(m_signBoard)が一つでも登録されていれば
-		if (m_signBoards.size())
-		{
-			////描画(背景のボード)処理を行う
-			//for (int i = 0; i < m_signBoards.size(); i++)
-			//{
-			//	m_signBoards.at(i)->BoardRender();
-			//}
-			////描画(テキスト)処理を行う
-			//for (int i = 0; i < m_signBoards.size(); i++)
-			//{
-			//	m_signBoards.at(i)->TextRender();
-			//}
-			for (int i = 0; i < m_signBoards.size(); i++)
-			{
-				m_signBoards.at(i)->ToolRender(m_reviewFullScreenTestFlag);
 			}
 		}
 	}
@@ -326,22 +467,18 @@ void SceneTool::Render(float elapsedTime)
 		{
 			if (m_slideIndex > 0)
 			{
-				m_spriteBox.at(sc_i(SpriteKind::Triangle))->Render(BasePoint::Center, m_slideTriangle.position[sc_i(TriangleType::Left)], m_slideTriangle.size,
-					0.0f, { 1.0f,1.0f,1.0f,m_slideTriangle.touchFlag[sc_i(TriangleType::Left)] ? 1.0f : 0.5f });
+				m_rectUIs["LTriangle"]->Render({ 1.0f,1.0f,1.0f,m_rectUIs["LTriangle"]->mouseTouchFlag ? 1.0f : 0.5f });
 			}
 			int _slideNum = m_slideIndex + 1;
-			m_spriteBox.at(sc_i(SpriteKind::Triangle))->Render(BasePoint::Center, m_slideTriangle.position[sc_i(TriangleType::Right)], { -m_slideTriangle.size.x,m_slideTriangle.size.y },
-				0.0f, { 1.0f,1.0f,m_chapter->GetSlides().size() == _slideNum ? 0.3f : 1.0f,m_slideTriangle.touchFlag[sc_i(TriangleType::Right)] ? 1.0f : 0.5f });
+			m_rectUIs["RTriangle"]->Render(DirectX::XMFLOAT2{ -1.0f,1.0f }, { 1.0f, 1.0f, m_chapter->GetSlides().size() == _slideNum ? 0.3f : 1.0f, m_rectUIs["RTriangle"]->mouseTouchFlag ? 1.0f : 0.5f });
 		}
 		//ゴミ箱アイコン描画
 		{
-			m_spriteBox.at(sc_i(SpriteKind::DustBox))->Render(BasePoint::RightBottom, m_dustBoxPos, m_dustBoxSize,
-				0.0f, { 1.0f,m_chapter->GetSlides().size() > 1 ? 1.0f : 0.3f,m_chapter->GetSlides().size() > 1 ? 1.0f : 0.3f,m_dustBoxTouchFlag ? 1.0f : 0.5f });
+			m_rectUIs["DustBox"]->Render({ 1.0f, 0.3f,0.3f, m_rectUIs["DustBox"]->mouseTouchFlag ? 1.0f : 0.5f });
 		}
-		//Addアイコン描画
+		//スライド追加アイコン描画
 		{
-			m_spriteBox.at(sc_i(SpriteKind::AddIcon))->Render(BasePoint::RightTop, m_addIconPos, m_addIconSize,
-				0.0f, { 1.0f,1.0f,1.0f,m_addIconTouchFlag ? 1.0f : 0.5f });
+			m_rectUIs["Add"]->Render({ 0.0f, 1.0f, 0.9f, m_rectUIs["Add"]->mouseTouchFlag ? 1.0f : 0.5f });
 		}
 	}
 
@@ -358,15 +495,72 @@ void SceneTool::ImGuiRender()
 	//最大スケールでレビュー画面が表示されているなら終わり
 	if (m_reviewFullScreenTestFlag)return;
 
-	ImGuizmo();
+	ImGuizmoRender();
 	ImGuiAssetsWindow(ImGui::GetWindowSize().x * 0.85f);
 	ImGuiSlideWindow();
+	ImGuiOperationWindow();
+	//Scene::CommonImGuiRender(_windowPos, _windowSize, _flags);
+}
+
+void SceneTool::ImGuiOperationWindow()
+{
+	Graphics& _graphics = Graphics::Instance();
+	using SeparateType = ScreenSeparateLine::SeparateType;
+
 	XMFLOAT2 _windowPos = { 0.0f,_graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
 	XMFLOAT2 _windowSize = { _graphics.GetScreenWidth() * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
 		_graphics.GetScreenHeight() * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)]) - m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-	Scene::CommonImGuiRender(_windowPos, _windowSize, _flags);
+
+	ImGui::SetNextWindowPos(ImVec2(_windowPos.x, _windowPos.y), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(_windowSize.x, _windowSize.y), ImGuiCond_Always);
+	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
+	ImGui::Begin("Operation", nullptr, _flags);
+
+	if (m_chapter->GetSlides()[m_slideIndex].m_characters.size())
+	{
+		ImGui::SliderInt("Character Index", &m_chapter->GetSlides()[m_slideIndex].m_characterIndex, 0, m_chapter->GetSlides()[m_slideIndex].m_characters.size() - 1);
+	}
+	if (ImGui::TreeNodeEx("Guozmo", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		if (ImGui::TreeNodeEx("Guizmo Mode", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::RadioButton("TRANSLATE", &m_guizmoType, sc_i(ImGuizmo::OPERATION::TRANSLATE));
+			ImGui::SameLine();
+			ImGui::RadioButton("SCALE", &m_guizmoType, sc_i(ImGuizmo::OPERATION::SCALE));
+			ImGui::TreePop();
+		}
+		ImGui::TreePop();
+	}
+
+	if (ImGui::TreeNodeEx("Lines", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		if (ImGui::Button("Add Line"))
+		{
+			m_lines.emplace_back();
+		}
+		if (m_lines.size())
+		{
+			if (ImGui::Button("Delete Line"))
+			{
+				m_lines.erase(m_lines.begin());
+			}
+
+			ImGui::InputFloat("Wall Distance", &lineNormalizeWallDistance, 0.01f);
+			lineNormalizeWallDistance = std::clamp(lineNormalizeWallDistance, 0.0f, 1.0f);
+			ImGui::InputFloat("Distance", &lineNormalizeDistance, 0.01f);
+			lineNormalizeDistance = std::clamp(lineNormalizeDistance, 0.0f, 1.0f);
+		}
+
+		ImGui::TreePop();
+	}
+
+	ImGui::Separator();
+	ImGui::End();
+	ImGui::PopStyleColor(2);
 }
+
 //Assetウィンドウ用のImGui描画関数
 void SceneTool::ImGuiAssetsWindow(float a_buttonWidth)
 {
@@ -403,28 +597,32 @@ void SceneTool::ImGuiAssetsWindow(float a_buttonWidth)
 		}
 		ImGui::PopStyleColor(3);	//色変更終了処理
 
-		//ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.5f, 0.3f, 1.0f)); //色変更
-		//ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.3f, 0.8f, 0.8f, 1.0f)); //色変更
-		//ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f)); //色変更
-		//if (ImGui::CollapsingHeader("Select Character Window", ImGuiTreeNodeFlags_DefaultOpen))
-		//{
-		//	if (m_sceneEvent)
-		//	{
-		//		float _imageLimitHeight = _graphics.GetScreenHeight() * 0.15f;
-		//		for (auto& _character : m_sceneEvent->m_activeCharacters)
-		//		{
-		//			ImVec2 _imageSize = { a_buttonWidth, a_buttonWidth * _character->GetSprites().at(0)->GetAspectRation() };
-		//			if (_imageSize.y > _imageLimitHeight)
-		//			{
-		//				_imageSize.y = _imageLimitHeight;
-		//				_imageSize.x = _imageSize.y / _character->GetSprites().at(0)->GetAspectRation();
-		//			}
-		//			ImGui::Image(_character->GetSprites().at(0)->GetShaderResource(), _imageSize);
-		//		}
-		//	}
-		//	ImGui::Separator();
-		//}
-		//ImGui::PopStyleColor(3);	//色変更終了処理
+		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.5f, 0.0f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.3f, 0.8f, 0.3f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f)); //色変更
+		if (ImGui::CollapsingHeader("Back Sprite Window", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::Button("Select TextWindow Sprite", ImVec2(a_buttonWidth, 0.0f)))
+			{
+				//filter(選択できるファイル形式)設定
+				static const char* _filter = "Image Files (*.png;*.jpeg;*.jpg)\0*.png;*.jpeg;*.jpg\0""All Files (*.*)\0*.*\0\0";
+				char _selectImageName[256] = {}; //選択したファイルのパスを保存する
+				HWND _hWnd = Graphics::Instance().GetHWND();
+				//開くファイルを選択する(選択し終えたら、_result = DialogResult::OK になる)
+				DialogResult _result = Dialog::OpenFileName(_selectImageName, sizeof(_selectImageName), _filter, "開きたい.png または.jpegファイルを選択してください", _hWnd);
+				//ファイルが選択されていたら
+				if (_result == DialogResult::OK)
+				{
+					wchar_t wideBuffer[256]; ////選択したファイルのパスを保存する(wchar_t <--- char)
+					MultiByteToWideChar(CP_ACP, 0, _selectImageName, -1, wideBuffer, 256); //(wchar_t <--- char)
+					//絶対パスを相対パス化
+					auto _spriteFilePath = std::filesystem::relative(wideBuffer);
+					m_chapter->GetSlides()[m_slideIndex].m_backSpr = std::make_shared<Sprite>(_spriteFilePath.wstring().c_str());
+				}
+				ImGui::Separator();
+			}
+			ImGui::PopStyleColor(3);	//色変更終了処理
+		}
 	}
 	ImGui::End();
 	ImGui::PopStyleColor(2);
@@ -546,8 +744,6 @@ void SceneTool::ImGuiAllCharactersWindow(float a_buttonWidth)
 		}
 		ImGui::Combo("Character", &_currentItem, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
 
-		ImGui::Text(_cstrItems.at(0));
-
 		Sprite* _characterSprite = _allFacIns.GetFacialSet(_currentItem)->GetFacial(0).get();
 		ImVec2 _imageSize = { a_buttonWidth, a_buttonWidth * _characterSprite->GetAspectRation() };
 		if (_imageSize.y > _imageLimitHeight)
@@ -569,7 +765,7 @@ void SceneTool::ImGuiAllCharactersWindow(float a_buttonWidth)
 			}
 		);
 
-		auto& appearingCharacters = m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters();
+		auto& appearingCharacters = m_chapter->GetSlides()[m_slideIndex].m_characters;
 		if (std::none_of(appearingCharacters.begin(), appearingCharacters.end(),
 			[&](const auto& c) { return c->name == _facialSetItr->first; }))
 		{
@@ -603,17 +799,56 @@ void SceneTool::ImGuiCharactersWindow()
 	{
 		if (m_chapter)
 		{
-			if (m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().size())
+			if (m_chapter->GetSlides()[m_slideIndex].m_characters.size())
 			{
+				auto& _selectSlide = m_chapter->GetSlides()[m_slideIndex];
+
+				for (int i = 0; i < _selectSlide.m_characters.size(); ++i)
+				{
+					// ユニークIDを確保する
+					ImGui::PushID(i);
+
+					// 表示（選択可能）
+					ImGui::Selectable(_selectSlide.m_characters[i]->name.c_str());
+
+					// ドラッグ元
+					if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+					{
+						ImGui::SetDragDropPayload("DND_ITEM", &i, sizeof(int));  // インデックスをペイロードとして渡す
+						ImGui::Text("%s", _selectSlide.m_characters[i]->name.c_str());
+						ImGui::EndDragDropSource();
+					}
+
+					// ドロップ先
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ITEM"))
+						{
+							int payloadIndex = *(const int*)payload->Data;
+
+							// 要素の並び替え
+							if (payloadIndex != i)
+							{
+								std::swap(_selectSlide.m_characters[i], _selectSlide.m_characters[payloadIndex]);
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::PopID();
+				}
+
 				std::vector<std::string> _facialsKeys{};
 				std::vector<const char*> _cstrItems;
 				float _spriteSizeX = ImGui::GetWindowSize().x * 0.5f;
 				XMFLOAT2 _imageLimitSize = { _screenSize.x * 0.1f, _screenSize.y * 0.1f };
-				for (int i = 0, iEnd = m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().size(); i < iEnd; i++)
+				for (int i = 0, iEnd = m_chapter->GetSlides()[m_slideIndex].m_characters.size(); i < iEnd; i++)
 				{
+					auto& _charcter = m_chapter->GetSlides()[m_slideIndex].m_characters.at(i);
+
 					_facialsKeys.clear();
 					_cstrItems.clear();
-					for (auto& _key : m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().at(i)->GetFacialSet()->keys)
+					for (auto& _key : _charcter->GetFacialSet()->keys)
 					{
 						_facialsKeys.emplace_back(_key);	// ← ここで _facialsKeys が文字列の実体を保持
 					}
@@ -621,11 +856,11 @@ void SceneTool::ImGuiCharactersWindow()
 					{
 						_cstrItems.push_back(str.c_str());	// ← 安全にポインタを取得
 					}
-					std::string _comboLabel = "##" + std::to_string(i) + "Facial";
-					ImGui::Combo(_comboLabel.c_str(), &m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().at(i)->facialIndex, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
+					std::string _comboLabel = "Facial##" + std::to_string(i);
+					ImGui::Combo(_comboLabel.c_str(), &_charcter->facialIndex, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
 
-					int _index = m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().at(i)->facialIndex;
-					Sprite* _facialSprite = m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().at(i)->GetFacialSet()->GetFacial(_index).get();
+					int _index = _charcter->facialIndex;
+					Sprite* _facialSprite = _charcter->GetFacialSet()->GetFacial(_index).get();
 					ImVec2 _imageSize = { _imageLimitSize.x, _imageLimitSize.x * _facialSprite->GetAspectRation() };
 					if (_imageSize.y > _imageLimitSize.y)
 					{
@@ -634,9 +869,10 @@ void SceneTool::ImGuiCharactersWindow()
 					}
 					ImGui::Image(_facialSprite->GetShaderResource(), _imageSize);
 
-					if (ImGui::Button("Delete Character", ImVec2(_spriteSizeX, 0.0f)))
+					std::string _deleteButtonLabel = "Delete Character##" + std::to_string(i);
+					if (ImGui::Button(_deleteButtonLabel.c_str(), ImVec2(_spriteSizeX, 0.0f)))
 					{
-						m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().erase(m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().begin() + i);
+						m_chapter->GetSlides()[m_slideIndex].m_removes.insert(_charcter);
 					}
 					ImGui::Separator();
 				}
@@ -685,7 +921,6 @@ void SceneTool::ImGuiExcuteWindow()
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.3f, 0.7f, 0.3f, 1.0f));
 	ImGui::Begin("Excute Window", nullptr, _flags);
 	{
-
 	}
 	ImGui::End();
 	ImGui::PopStyleColor(2);
@@ -713,23 +948,13 @@ void SceneTool::ImGuiExitWindow()
 	ImGui::PopStyleColor(2);
 }
 
-void SceneTool::ImGuizmo()
+void SceneTool::ImGuizmoRender()
 {
 	Graphics& _graphics = Graphics::Instance();
 
-	if (!m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters().size())return;
+	if (!m_chapter->GetSlides()[m_slideIndex].m_characters.size())return;
 
-	if (ImGui::TreeNodeEx("Guozmo", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		if (ImGui::TreeNodeEx("Guizmo Mode", ImGuiTreeNodeFlags_DefaultOpen))
-		{
-			ImGui::RadioButton("TRANSLATE", &m_guizmoType, sc_i(ImGuizmo::OPERATION::TRANSLATE));
-			ImGui::SameLine();
-			ImGui::RadioButton("SCALE", &m_guizmoType, sc_i(ImGuizmo::OPERATION::SCALE));
-			ImGui::TreePop();
-		}
-		ImGui::TreePop();
-	}
+	int _selectCharacterIndex = m_chapter->GetSlides()[m_slideIndex].m_characterIndex;
 
 	//Guizmoの作業領域
 	ImVec2 _guizmoTaskPos = {}, _guizmoTaskSize = {};
@@ -740,9 +965,9 @@ void SceneTool::ImGuizmo()
 
 	_guizmoTaskPos = { m_reviewScreenLeftTopPos.x,m_reviewScreenLeftTopPos.y };
 	_guizmoTaskSize = { m_reviewScreenSize.x,m_reviewScreenSize.y };
-	_selectS = DirectX::XMMatrixScaling(m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizeSize.x, m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizeSize.y, 1.0f);
-	_selectT = DirectX::XMMatrixTranslation(m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizePosition.x, m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizePosition.y, 0.0f);
-	
+	_selectS = DirectX::XMMatrixScaling(m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.x, m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.y, 1.0f);
+	_selectT = DirectX::XMMatrixTranslation(m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.x, m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.y, 0.0f);
+
 	/*switch (static_cast<SelectObject>(m_editElements.selectObjectIndex))
 	{
 	case SelectObject::Board:
@@ -784,17 +1009,17 @@ void SceneTool::ImGuizmo()
 		XMMATRIX _newTransform = XMLoadFloat4x4(&_guizmoTransform);
 		XMMatrixDecompose(&_scale, &_rotation, &_translation, _newTransform);
 
-		XMStoreFloat2(&m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizeSize, _scale);
-		m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizeSize.x = std::clamp(
-			m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizeSize.x, FLT_EPSILON, 5.0f);
-		m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizeSize.y = std::clamp(
-			m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizeSize.y, FLT_EPSILON, 5.0f);
+		XMStoreFloat2(&m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize, _scale);
+		m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.x = std::clamp(
+			m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.x, FLT_EPSILON, 5.0f);
+		m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.y = std::clamp(
+			m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.y, FLT_EPSILON, 5.0f);
 
-		XMStoreFloat2(&m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizePosition, _translation);
-		m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizePosition.x = std::clamp(
-			m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizePosition.x, FLT_EPSILON, 1.0f);
-		m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizePosition.y = std::clamp(
-			m_chapter->GetSlides()[m_slideIndex].GetAppearingCharacters()[0]->normalizePosition.y, FLT_EPSILON, 1.0f);
+		XMStoreFloat2(&m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition, _translation);
+		m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.x = std::clamp(
+			m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.x, FLT_EPSILON, 1.0f);
+		m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.y = std::clamp(
+			m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.y, FLT_EPSILON, 1.0f);
 	}
 }
 
@@ -849,107 +1074,61 @@ void SceneTool::OnSizeChange()
 	Graphics& _graphics = Graphics::Instance();
 }
 
-void SceneTool::MouseVsTriangles()
-{
-	Mouse& _mouse = Input::Instance().GetMouse();
 
-	using TriangleType = SlideTriangle::TriangleType;
-
-	XMFLOAT2 _leftTopPos;
-	XMFLOAT2 _rightBottomPos;
-
-	auto _TouchAndHoldCheck = [&](int a_type, BasePoint a_basePoint)
-		{
-			_leftTopPos = CalcSquareLeftTopPosition(a_basePoint, m_slideTriangle.position[a_type], m_slideTriangle.size);
-			_rightBottomPos = CalcSquareRightBottomPosition(a_basePoint, m_slideTriangle.position[a_type], m_slideTriangle.size);
-			if (_mouse.GetPositionX() < _leftTopPos.x || _rightBottomPos.x < _mouse.GetPositionX() ||
-				_mouse.GetPositionY() < _leftTopPos.y || _rightBottomPos.y < _mouse.GetPositionY())
-			{
-				m_slideTriangle.touchFlag[a_type] = false;
-			}
-			else
-			{
-				m_slideTriangle.touchFlag[a_type] = true;
-			}
-		};
-
-	_TouchAndHoldCheck(sc_i(TriangleType::Left), BasePoint::Center);
-	_TouchAndHoldCheck(sc_i(TriangleType::Right), BasePoint::Center);
-
-	if (m_slideTriangle.touchFlag[sc_i(TriangleType::Left)])
-	{
-		if (m_slideIndex > 0 && _mouse.GetButtonDown() & Mouse::BTN_LEFT)
-		{
-			m_slideIndex--;
-		}
-	}
-	else if (m_slideTriangle.touchFlag[sc_i(TriangleType::Right)])
-	{
-		if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
-		{
-			m_slideIndex++;
-			if (m_chapter->GetSlides().size() == m_slideIndex)
-			{
-				m_chapter->GetSlides().emplace_back(Slide());
-			}
-		}
-	}
-}
-
-void SceneTool::MouseVsDustBox()
-{
-	Mouse& _mouse = Input::Instance().GetMouse();
-
-	XMFLOAT2 _leftTopPos = CalcSquareLeftTopPosition(BasePoint::RightBottom, m_dustBoxPos, m_dustBoxSize);
-	XMFLOAT2 _rightBottomPos = CalcSquareRightBottomPosition(BasePoint::RightBottom, m_dustBoxPos, m_dustBoxSize);
-	if (_mouse.GetPositionX() < _leftTopPos.x || _rightBottomPos.x < _mouse.GetPositionX() ||
-		_mouse.GetPositionY() < _leftTopPos.y || _rightBottomPos.y < _mouse.GetPositionY())
-	{
-		m_dustBoxTouchFlag = false;
-	}
-	else
-	{
-		m_dustBoxTouchFlag = true;
-	}
-
-	if (m_dustBoxTouchFlag)
-	{
-		if (m_chapter->GetSlides().size() > 1 && _mouse.GetButtonDown() & Mouse::BTN_LEFT)
-		{
-			m_chapter->GetSlides().erase(m_chapter->GetSlides().begin() + m_slideIndex);
-			if (m_slideIndex >= m_chapter->GetSlides().size())
-			{
-				m_slideIndex = m_chapter->GetSlides().size() - 1;
-			}
-		}
-	}
-}
-
-void SceneTool::MouseVsAddIcon()
-{
-	Mouse& _mouse = Input::Instance().GetMouse();
-
-	XMFLOAT2 _leftTopPos = CalcSquareLeftTopPosition(BasePoint::RightTop, m_addIconPos, m_addIconSize);
-	XMFLOAT2 _rightBottomPos = CalcSquareRightBottomPosition(BasePoint::RightTop, m_addIconPos, m_addIconSize);
-	if (_mouse.GetPositionX() < _leftTopPos.x || _rightBottomPos.x < _mouse.GetPositionX() ||
-		_mouse.GetPositionY() < _leftTopPos.y || _rightBottomPos.y < _mouse.GetPositionY())
-	{
-		m_addIconTouchFlag = false;
-	}
-	else
-	{
-		m_addIconTouchFlag = true;
-	}
-
-	if (m_addIconTouchFlag)
-	{
-		if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
-		{
-			m_chapter->GetSlides().insert(m_chapter->GetSlides().begin() + m_slideIndex + 1, Slide());
-			m_slideIndex++;
-		}
-	}
-}
+//void SceneTool::MouseVsDustBox()
+//{
+//	Mouse& _mouse = Input::Instance().GetMouse();
+//
+//	XMFLOAT2 _leftTopPos = CalcSquareLeftTopPosition(BasePoint::RightBottom, m_dustBoxPos, m_dustBoxSize);
+//	XMFLOAT2 _rightBottomPos = CalcSquareRightBottomPosition(BasePoint::RightBottom, m_dustBoxPos, m_dustBoxSize);
+//	if (_mouse.GetPositionX() < _leftTopPos.x || _rightBottomPos.x < _mouse.GetPositionX() ||
+//		_mouse.GetPositionY() < _leftTopPos.y || _rightBottomPos.y < _mouse.GetPositionY())
+//	{
+//		m_dustBoxTouchFlag = false;
+//	}
+//	else
+//	{
+//		m_dustBoxTouchFlag = true;
+//	}
+//
+//	if (m_dustBoxTouchFlag)
+//	{
+//		if (m_chapter->GetSlides().size() > 1 && _mouse.GetButtonDown() & Mouse::BTN_LEFT)
+//		{
+//			m_chapter->GetSlides().erase(m_chapter->GetSlides().begin() + m_slideIndex);
+//			if (m_slideIndex >= m_chapter->GetSlides().size())
+//			{
+//				m_slideIndex = m_chapter->GetSlides().size() - 1;
+//			}
+//		}
+//	}
+//}
+//
+//void SceneTool::MouseVsAddIcon()
+//{
+//	Mouse& _mouse = Input::Instance().GetMouse();
+//
+//	XMFLOAT2 _leftTopPos = CalcSquareLeftTopPosition(BasePoint::RightTop, m_addIconPos, m_addIconSize);
+//	XMFLOAT2 _rightBottomPos = CalcSquareRightBottomPosition(BasePoint::RightTop, m_addIconPos, m_addIconSize);
+//	if (_mouse.GetPositionX() < _leftTopPos.x || _rightBottomPos.x < _mouse.GetPositionX() ||
+//		_mouse.GetPositionY() < _leftTopPos.y || _rightBottomPos.y < _mouse.GetPositionY())
+//	{
+//		m_addIconTouchFlag = false;
+//	}
+//	else
+//	{
+//		m_addIconTouchFlag = true;
+//	}
+//
+//	if (m_addIconTouchFlag)
+//	{
+//		if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
+//		{
+//			m_chapter->GetSlides().insert(m_chapter->GetSlides().begin() + m_slideIndex + 1, Slide());
+//			m_slideIndex++;
+//		}
+//	}
+//}
 
 void SceneTool::ScreenSeparateLine::MouseHitCheck()
 {

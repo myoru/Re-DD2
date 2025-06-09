@@ -1,17 +1,32 @@
 #include "Character.h"
 
 Character::Character(std::string a_name, std::shared_ptr<FacialSet> a_facialSet)
-	:name(a_name),facialSet(a_facialSet)
+	:name(a_name), facialSet(a_facialSet)
 {
+	int hdhd = 0;
+}
+
+void Character::Initialize(int a_vectorSize, int a_facialIndex)
+{
+
+
+	if (a_facialIndex >= 0)
+	{
+
+	}
 }
 
 void Character::ToolUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewLeftTop, DirectX::XMFLOAT2 a_reviewSize)
 {
-	position.x = a_reviewLeftTop.x + a_reviewSize.x * normalizeSize.x;
-	position.y = a_reviewLeftTop.y + a_reviewSize.y * normalizeSize.y;
+	position.x = a_reviewLeftTop.x + a_reviewSize.x * normalizePosition.x;
+	position.y = a_reviewLeftTop.y + a_reviewSize.y * normalizePosition.y;
+	size.y = a_reviewSize.y * normalizeSize.y;
+	size.x = size.y / facialSet->GetFacial(0)->GetAspectRation();
+}
 
-	/*size.x = a_reviewLeftTop.x + a_reviewSize.x * normalizeSize.x;
-	size.y = a_reviewLeftTop.y + a_reviewSize.y * normalizeSize.y;*/
+void Character::ToolRender(int a_facialIndex, BasePoint a_basePoint, DirectX::XMFLOAT4 a_color)
+{
+	facialSet->GetFacial(a_facialIndex)->Render(a_basePoint, position, size, 0.0f, a_color);
 }
 
 std::shared_ptr<Sprite> Character::GetFacial(int a_keyIndex)

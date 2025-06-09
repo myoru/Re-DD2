@@ -9,6 +9,10 @@ public:
 	//Slide(const Slide& slide);
 	~Slide();
 
+	void DeleteCharacter();
+
+	void Render(DirectX::XMFLOAT2 a_reviewLeftTopPos,DirectX::XMFLOAT2 a_reviewSize);
+
 	/*void ExcuteAllActions()
 	{
 		for (auto& [_key, _action] : m_actions)
@@ -34,25 +38,29 @@ public:
 		m_actions.clear();
 	}*/
 
-	std::vector<std::shared_ptr<Character>>& GetAppearingCharacters() { return m_appearingCharacters; }
-
 public:
-	//struct Action
-	//{
-	//	std::function<void()> function{};
-	//	std::string functionStr{};
-	//};
-
 	//ƒXƒ‰ƒCƒh‚ÌŽí—Þ
 	enum class Type
 	{
 		Normal,
 	};
-private:
-	Type m_type = Type::Normal;
-	std::vector<std::shared_ptr<Character>> m_appearingCharacters;
-	//std::shared_ptr<Character> m_mainCharacter;
+
+	template<class T>
+	void serialize(T& archive)
+	{
+		archive(
+			CEREAL_NVP(m_type),
+			CEREAL_NVP(m_characters),
+			CEREAL_NVP(m_text)
+		);
+	}
+public:
+	int m_type = static_cast<int>(Type::Normal);
+	std::vector<std::shared_ptr<Character>> m_characters;
+	std::set<std::shared_ptr<Character>> m_removes;
+	int m_characterIndex = 0;
 	std::shared_ptr<Sprite> m_backSpr;
+	//std::string m_backSprFilePath{};
 	std::string m_text;
 	//std::unordered_map<std::string, std::function<void()>> m_actions;
 	//std::unordered_map<std::string, Action> m_actions;

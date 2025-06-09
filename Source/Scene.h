@@ -36,7 +36,7 @@ public:
 #ifdef USE_IMGUI
 	//ImGuiï`âÊä÷êî
 	virtual void ImGuiRender() = 0;
-	void CommonImGuiRender(DirectX::XMFLOAT2 a_position = { -1.0f,1.0f }, DirectX::XMFLOAT2 a_size = { -1.0f,1.0f }, ImGuiWindowFlags a_flags = ImGuiWindowFlags_None);
+	virtual void CommonImGuiRender(DirectX::XMFLOAT2 a_position = { -1.0f,1.0f }, DirectX::XMFLOAT2 a_size = { -1.0f,1.0f }, ImGuiWindowFlags a_flags = ImGuiWindowFlags_None);
 #endif // USE_IMGUI
 	//RenderTargetÇÃClearä÷êî
 	void ClearRenderTarget();

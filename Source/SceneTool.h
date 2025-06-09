@@ -2,6 +2,8 @@
 #include "Scene.h"
 #include "SignBoard.h"
 #include "Chapter.h"
+#include "RectUI.h"
+#include <unordered_map>
 
 class SceneTool : public Scene
 {
@@ -17,10 +19,11 @@ public:
 	void Update(float elapsedTime)override;
 	void CharactersUpdate(float a_elapsedTime);
 	//描画処理
-	void  Render(float elapsedTime)override;
+	void Render(float elapsedTime)override;
 #ifdef USE_IMGUI
 	//ImGui描画関数
 	void ImGuiRender()override;
+	void ImGuiOperationWindow();
 	//Assetウィンドウ用のImGui描画関数
 	void ImGuiTextWindow(float a_buttonWidth);
 	void ImGuiAssetsWindow(float a_buttonWidth);
@@ -30,7 +33,7 @@ public:
 	void ImGuiEnterWindow();
 	void ImGuiExcuteWindow();
 	void ImGuiExitWindow();
-	void ImGuizmo();
+	void ImGuizmoRender();
 #endif // USE_IMGUI
 	//画面サイズ変更時に呼ばれる関数
 	void OnSizeChange()override;
@@ -73,39 +76,14 @@ private:
 	float m_eventWindowWidth = 0.0f;
 	DirectX::XMFLOAT2 m_eventWindowDrawStartPos = {};
 	float m_slideWindowHeight = 0.0f;
-	float m_reviewOffsetScale = 0.9f;
-
-	struct SlideTriangle
-	{
-		float scaleX{};
-		float offsetX{};
-		DirectX::XMFLOAT2 position[2]{};
-		DirectX::XMFLOAT2 size{};
-		bool touchFlag[2]{ false,false };
-
-		enum class TriangleType
-		{
-			Left,
-			Right,
-		};
-	};
-	SlideTriangle m_slideTriangle;
-	void MouseVsTriangles();
-
-	DirectX::XMFLOAT2 m_dustBoxPos{};
-	DirectX::XMFLOAT2 m_dustBoxSize{};
-	bool m_dustBoxTouchFlag = false;
-	void MouseVsDustBox();
-	DirectX::XMFLOAT2 m_addIconPos{};
-	DirectX::XMFLOAT2 m_addIconSize{};
-	bool m_addIconTouchFlag = false;
-	void MouseVsAddIcon();
+	float m_reviewOffsetScale = 0.85f;
 
 	//テキストウィンドウ用ポインタ変数
 	std::vector<std::unique_ptr<SignBoard>> m_signBoards;
 	std::unique_ptr<Chapter> m_chapter;
 	int m_slideIndex = 0;
 
+	DirectX::XMFLOAT2 m_blackSpaceSize{};
 
 	bool m_usingGuizmo = false;
 	int m_guizmoType = 0;
@@ -113,11 +91,16 @@ private:
 	enum class SpriteKind
 	{
 		White,
-		Triangle,
 		Number,
-		DustBox,
-		AddIcon,
 	};
 
+	std::vector<float> m_lines;
+	int mainLineIndex = 0;
+	float mainLineNormalizePosition = 0.5f;
+	float lineNormalizeWallDistance = 0.1f;
+	float lineNormalizeDistance = 0.1f;
+	bool mainLineExistFalg = false;
+
 	float m_successOutputTextDrawTimer = 0.0f;
+	std::unordered_map<std::string,std::unique_ptr<RectUI>> m_rectUIs;
 };

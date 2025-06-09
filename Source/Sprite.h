@@ -9,7 +9,7 @@
 class Sprite
 {
 public:
-	Sprite(const wchar_t* filename, BasePoint c_basePoint = BasePoint::LeftTop);
+	Sprite(const wchar_t* filename, BasePoint c_basePoint = BasePoint::Center);
 	~Sprite() {}
 
 	void ReloadTexture(ID3D11Device* a_device,const wchar_t* filename);
