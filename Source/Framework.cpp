@@ -5,7 +5,7 @@
 #include "SceneLoading.h"
 #include "SceneTool.h"
 
-Framework::Framework(HWND hWnd, bool fullscreen) : hWnd(hWnd), graphics(hWnd, fullscreen), input(hWnd), allFacialSet()
+Framework::Framework(HWND hWnd, bool fullscreen) : hWnd(hWnd), graphics(hWnd, fullscreen), input(hWnd)
 {
 	//どのシーンからスタートするかをココで決める
 	SceneManager::Instance().ChangeScene(new SceneLoading(new SceneTool())); //タイトルからスタート

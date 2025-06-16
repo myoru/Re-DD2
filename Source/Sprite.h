@@ -157,6 +157,17 @@ public:
 		float angle = 0.0f, /*90,180,270など*/
 		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
 
+	void OutLineRender(BasePoint basePoint,/*基準点*/
+		float dx, float dy, float dw, float dh,
+		float sx, float sy, float sw, float sh,
+		float angle = 0.0f, /*90,180,270など*/
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+
+	void OutLineRender(BasePoint basePoint,/*基準点*/
+		float dx, float dy, float dw, float dh,
+		float angle = 0.0f, /*90,180,270など*/
+		DirectX::XMFLOAT4 color = { 0.0f,0.0f,0.0f,1.0f });
+
 	// テクスチャ幅取得
 	float GetTextureWidth() const { return textureWidth; }
 	// テクスチャ高さ取得
@@ -173,7 +184,7 @@ private:
 
 private:
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertex_shader;
-	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixel_shader;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixel_shaders[2];
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> input_layout;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertex_buffer;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view;

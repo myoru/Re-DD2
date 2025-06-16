@@ -1,5 +1,6 @@
 #pragma once
 #include "Scene.h"
+#include "AllFacialSet.h"
 
 ///シーンマネージャー
 class SceneManager
@@ -38,5 +39,7 @@ public:
 public:
 	Scene* current_scene = nullptr;
 	Scene* next_scene = nullptr;
+
+	AllFacialSet m_allFacialSet;
 };
 

@@ -4,6 +4,7 @@
 #include "Graphics.h"
 
 SceneManager::SceneManager()
+	:m_allFacialSet()
 {
 }
 

@@ -8,7 +8,7 @@
 class SceneLoading : public Scene
 {
 public:
-	SceneLoading(Scene* nextScene ,bool drawExplanation = false) :next_scene(nextScene), draw_explanation(drawExplanation){}
+	SceneLoading(Scene* nextScene) :m_nextScene(nextScene){}
 	~SceneLoading()override {}
 
 	//èâä˙âª
@@ -33,14 +33,15 @@ private:
 	static void LoadingThread(SceneLoading* scene);
 
 private:
-	std::unique_ptr<SameSprite> white_spr = nullptr;
-	/*std::unique_ptr<SameSprite> hack_logo_spr = nullptr;
-	std::unique_ptr<SameSprite> explanation_spr = nullptr;*/
-	
-	bool draw_explanation;
-	float hack_logo_spr_alpha = 0.0f;
-	bool hack_logo_spr_alpha_trg = true;
+	float m_logoSprAlpha = 0.0f;
+	bool m_logoSprAlphaTrg = true;
 
-	Scene* next_scene = nullptr;
-	std::thread* thread = nullptr;
+	Scene* m_nextScene = nullptr;
+	std::thread* m_thread = nullptr;
+
+	enum class SpriteKind
+	{
+		White,
+		Logo,
+	};
 };

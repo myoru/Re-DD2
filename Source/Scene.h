@@ -69,6 +69,8 @@ protected:
 	static DirectX::XMFLOAT4 m_clearColor;
 	//背景色
 	static DirectX::XMFLOAT4 m_backColor;
+	//画面サイズ
+	static DirectX::XMFLOAT2 screenSize;
 #pragma endregion CommonScenes
 	//BGM・SE
 	std::vector<std::unique_ptr<Audio>> m_seBox;

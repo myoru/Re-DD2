@@ -30,10 +30,15 @@ public:
 		}
 	}
 
-	std::shared_ptr<Sprite> GetFacial(const int& a_targetKeyIndex)
+	std::shared_ptr<Sprite> GetFacial(const int& a_facialIndex)
 	{
-		const std::string _targetKey = keys[a_targetKeyIndex];
+		const std::string _targetKey = keys[a_facialIndex];
 		return GetFacial(_targetKey);
+	}
+
+	std::string GetKey(const int& a_targetKeyIndex)
+	{
+		return keys[a_targetKeyIndex];
 	}
 
 	std::vector<std::string> keys;

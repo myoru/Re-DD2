@@ -126,6 +126,17 @@ void SignBoard::ToolRender(bool a_fullscreen, FXMVECTOR a_textColor)
 	m_textRenderer->End();
 }
 
+void SignBoard::ToolRender2(bool a_fullscreen, FXMVECTOR a_textColor)
+{
+	m_boardSpr->Render(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
+
+	m_textRenderer->Begin();
+	XMFLOAT2 _textDrawableAreaLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
+	m_textRenderer->ToolRender2(jElements.wText, jElements.textDrawStartPosition, _textDrawableAreaLeftTopPos, jElements.textDrawableAreaSize,
+		static_cast<TextRenderer::TextAlignment>(jElements.textAlignment), jElements.lineSpace, 0.0f, a_textColor, jElements.textScale, a_fullscreen);
+	m_textRenderer->End();
+}
+
 #ifdef USE_IMGUI
 
 #endif

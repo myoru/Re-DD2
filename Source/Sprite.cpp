@@ -44,7 +44,8 @@ Sprite::Sprite(const wchar_t* filename, BasePoint c_basePoint)
 	};
 
 	CreateVsFromCso(_device, ".\\Data\\Shader\\sprite_vs.cso", vertex_shader.GetAddressOf(), input_layout.GetAddressOf(), input_element_desc, _countof(input_element_desc));
-	CreatePsFromCso(_device, ".\\Data\\Shader\\sprite_ps.cso", pixel_shader.GetAddressOf());
+	CreatePsFromCso(_device, ".\\Data\\Shader\\sprite_ps.cso", pixel_shaders[0].GetAddressOf());
+	CreatePsFromCso(_device, ".\\Data\\Shader\\spriteOutline_ps.cso", pixel_shaders[1].GetAddressOf());
 
 	if (filename)
 	{
@@ -349,7 +350,7 @@ void Sprite::Render(BasePoint basePoint, float dx, float dy, float dw, float dh,
 	_immediate_context->IASetInputLayout(input_layout.Get());
 	//シェーダーのバインド
 	_immediate_context->VSSetShader(vertex_shader.Get(), nullptr, 0);
-	_immediate_context->PSSetShader(pixel_shader.Get(), nullptr, 0);
+	_immediate_context->PSSetShader(pixel_shaders[0].Get(), nullptr, 0);
 	//シェーダーリソースのバインド
 	_immediate_context->PSSetShaderResources(0, 1, shader_resource_view.GetAddressOf());
 	//プリミティブの描画
@@ -586,7 +587,7 @@ void Sprite::Render(DirectX::XMFLOAT2 a_basePoint, DirectX::XMFLOAT2 pos, Direct
 	_immediate_context->IASetInputLayout(input_layout.Get());
 	//シェーダーのバインド
 	_immediate_context->VSSetShader(vertex_shader.Get(), nullptr, 0);
-	_immediate_context->PSSetShader(pixel_shader.Get(), nullptr, 0);
+	_immediate_context->PSSetShader(pixel_shaders[0].Get(), nullptr, 0);
 	//シェーダーリソースのバインド
 	_immediate_context->PSSetShaderResources(0, 1, shader_resource_view.GetAddressOf());
 	//プリミティブの描画
@@ -594,6 +595,198 @@ void Sprite::Render(DirectX::XMFLOAT2 a_basePoint, DirectX::XMFLOAT2 pos, Direct
 
 	ID3D11ShaderResourceView* srvs[] = { nullptr };
 	_immediate_context->PSSetShaderResources(0, 1, srvs);
+}
+
+void Sprite::OutLineRender(BasePoint basePoint, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh, float angle, DirectX::XMFLOAT4 color)
+{
+	ID3D11DeviceContext* _immediate_context = Graphics::Instance().GetDeviceContext();
+
+	//スクリーン(ビューポート)のサイズ取得
+	D3D11_VIEWPORT viewport{};
+	UINT num_viewports{ 1 };
+	_immediate_context->RSGetViewports(&num_viewports, &viewport);
+
+	//左上	//右上	//左下	//右下
+	float x0, y0, x1, y1, x2, y2, x3, y3;
+
+	//回転用の中心点
+	DirectX::XMFLOAT2 center{};
+
+	switch (basePoint)
+	{
+	case BasePoint::Center:
+		x0 = dx - dw * 0.5f;
+		y0 = dy - dh * 0.5f;
+		x1 = dx + dw * 0.5f;
+		y1 = dy - dh * 0.5f;
+		x2 = dx - dw * 0.5f;
+		y2 = dy + dh * 0.5f;
+		x3 = dx + dw * 0.5f;
+		y3 = dy + dh * 0.5f;
+		center.x = dx;
+		center.y = dy;
+		break;
+	case BasePoint::LeftTop:
+		x0 = dx;
+		y0 = dy;
+		x1 = dx + dw;
+		y1 = dy;
+		x2 = dx;
+		y2 = dy + dh;
+		x3 = dx + dw;
+		y3 = dy + dh;
+		center.x = dx + dw * 0.5f;
+		center.y = dy + dh * 0.5f;
+		break;
+	case BasePoint::RightTop:
+		x0 = dx - dw;
+		y0 = dy;
+		x1 = dx;
+		y1 = dy;
+		x2 = dx - dw;
+		y2 = dy + dh;
+		x3 = dx;
+		y3 = dy + dh;
+		center.x = dx - dw * 0.5f;
+		center.y = dy + dh * 0.5f;
+		break;
+	case BasePoint::LeftBottom:
+		x0 = dx;
+		y0 = dy - dh;
+		x1 = dx + dw;
+		y1 = dy - dh;
+		x2 = dx;
+		y2 = dy;
+		x3 = dx + dw;
+		y3 = dy;
+		center.x = dx + dw * 0.5f;
+		center.y = dy - dh * 0.5f;
+		break;
+	case BasePoint::RightBottom:
+		x0 = dx - dw;
+		y0 = dy - dh;
+		x1 = dx;
+		y1 = dy - dh;
+		x2 = dx - dw;
+		y2 = dy;
+		x3 = dx;
+		y3 = dy;
+		center.x = dx - dw * 0.5f;
+		center.y = dy - dh * 0.5f;
+		break;
+	case BasePoint::Top:
+		x0 = dx - dw * 0.5f;
+		y0 = dy;
+		x1 = dx + dw * 0.5f;
+		y1 = dy;
+		x2 = dx - dw * 0.5f;
+		y2 = dy + dh;
+		x3 = dx + dw * 0.5f;
+		y3 = dy + dh;
+		center.x = dx;
+		center.y = dy + dh * 0.5f;
+		break;
+	case BasePoint::Bottom:
+		x0 = dx - dw * 0.5f;
+		y0 = dy - dh;
+		x1 = dx + dw * 0.5f;
+		y1 = dy - dh;
+		x2 = dx - dw * 0.5f;
+		y2 = dy;
+		x3 = dx + dw * 0.5f;
+		y3 = dy;
+		center.x = dx;
+		center.y = dy - dh * 0.5f;
+		break;
+	case BasePoint::Left:
+		x0 = dx;
+		y0 = dy - dh * 0.5f;
+		x1 = dx + dw;
+		y1 = dy - dh * 0.5f;
+		x2 = dx;
+		y2 = dy + dh * 0.5f;
+		x3 = dx + dw;
+		y3 = dy + dh * 0.5f;
+		center.x = dx + dw * 0.5f;
+		center.y = dy;
+		break;
+	case BasePoint::Right:
+		x0 = dx - dw;
+		y0 = dy - dh * 0.5f;
+		x1 = dx;
+		y1 = dy - dh * 0.5f;
+		x2 = dx - dw;
+		y2 = dy + dh * 0.5f;
+		x3 = dx;
+		y3 = dy + dh * 0.5f;
+		center.x = dx - dw * 0.5f;
+		center.y = dy;
+		break;
+	}
+
+	//回転処理
+	Rotate(x0, y0, { center }, angle);
+	Rotate(x1, y1, { center }, angle);
+	Rotate(x2, y2, { center }, angle);
+	Rotate(x3, y3, { center }, angle);
+
+
+	//NDCへの変換
+	x0 = 2.0f * x0 / viewport.Width - 1.0f;
+	y0 = 1.0f - 2.0f * y0 / viewport.Height;
+	x1 = 2.0f * x1 / viewport.Width - 1.0f;
+	y1 = 1.0f - 2.0f * y1 / viewport.Height;
+	x2 = 2.0f * x2 / viewport.Width - 1.0f;
+	y2 = 1.0f - 2.0f * y2 / viewport.Height;
+	x3 = 2.0f * x3 / viewport.Width - 1.0f;
+	y3 = 1.0f - 2.0f * y3 / viewport.Height;
+
+	float u0{ sx / texture2d_desc.Width };
+	float v0{ sy / texture2d_desc.Height };
+	float u1{ (sx + sw) / texture2d_desc.Width };
+	float v1{ (sy + sh) / texture2d_desc.Height };
+
+	//頂点バッファオブジェクトを更新
+	HRESULT hr{ S_OK };
+	D3D11_MAPPED_SUBRESOURCE mapped_subresource{};
+	hr = _immediate_context->Map(vertex_buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
+	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
+
+	Vertex* vertices{ reinterpret_cast<Vertex*>(mapped_subresource.pData) };
+	if (vertices != nullptr)
+	{
+		vertices[0] = { { x0, y0, 0 }, { color.x,color.y,color.z,color.w }, { u0,v0 } };
+		vertices[1] = { { x1, y1, 0 }, { color.x,color.y,color.z,color.w }, { u1,v0 } };
+		vertices[2] = { { x2, y2, 0 }, { color.x,color.y,color.z,color.w }, { u0,v1 } };
+		vertices[3] = { { x3, y3, 0 }, { color.x,color.y,color.z,color.w }, { u1,v1 } };
+	}
+
+	_immediate_context->Unmap(vertex_buffer.Get(), 0);
+
+
+	//頂点バッファーのバインド
+	UINT stride{ sizeof(Vertex) };
+	UINT offset{ 0 };
+	_immediate_context->IASetVertexBuffers(0, 1, vertex_buffer.GetAddressOf(), &stride, &offset);
+	//プリミティブタイプおよびデータの順序に関する情報のバインド
+	_immediate_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	//入力レイアウトオブジェクトのバインド
+	_immediate_context->IASetInputLayout(input_layout.Get());
+	//シェーダーのバインド
+	_immediate_context->VSSetShader(vertex_shader.Get(), nullptr, 0);
+	_immediate_context->PSSetShader(pixel_shaders[1].Get(), nullptr, 0);
+	//シェーダーリソースのバインド
+	_immediate_context->PSSetShaderResources(0, 1, shader_resource_view.GetAddressOf());
+	//プリミティブの描画
+	_immediate_context->Draw(4, 0);
+
+	ID3D11ShaderResourceView* srvs[] = { nullptr };
+	_immediate_context->PSSetShaderResources(0, 1, srvs);
+}
+
+void Sprite::OutLineRender(BasePoint basePoint, float dx, float dy, float dw, float dh, float angle, DirectX::XMFLOAT4 color)
+{
+	OutLineRender(basePoint, dx, dy, dw, dh, 0.0f, 0.0f, textureWidth, textureHeight, angle, color);
 }
 
 void Sprite::Rotate(float& x, float& y, DirectX::XMFLOAT2 center, float angle)

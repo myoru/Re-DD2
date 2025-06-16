@@ -3,13 +3,11 @@
 Character::Character(std::string a_name, std::shared_ptr<FacialSet> a_facialSet)
 	:name(a_name), facialSet(a_facialSet)
 {
-	int hdhd = 0;
+	//facialStr = facialSet->GetKey(facialIndex);
 }
 
 void Character::Initialize(int a_vectorSize, int a_facialIndex)
 {
-
-
 	if (a_facialIndex >= 0)
 	{
 
@@ -24,9 +22,14 @@ void Character::ToolUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewLeftTo
 	size.x = size.y / facialSet->GetFacial(0)->GetAspectRation();
 }
 
-void Character::ToolRender(int a_facialIndex, BasePoint a_basePoint, DirectX::XMFLOAT4 a_color)
+void Character::ToolRender(BasePoint a_basePoint, DirectX::XMFLOAT4 a_color)
 {
-	facialSet->GetFacial(a_facialIndex)->Render(a_basePoint, position, size, 0.0f, a_color);
+	facialSet->GetFacial(facialIndex)->Render(a_basePoint, position, size, 0.0f, a_color);
+}
+
+void Character::ToolOutLineRender(BasePoint a_basePoint, DirectX::XMFLOAT4 a_color)
+{
+	facialSet->GetFacial(facialIndex)->OutLineRender(a_basePoint, position.x, position.y, size.x * 1.05f, size.y * 1.05f, 0.0f, a_color);
 }
 
 std::shared_ptr<Sprite> Character::GetFacial(int a_keyIndex)
@@ -68,4 +71,23 @@ std::vector<std::string> Character::GetFacialKeys()
 		keys.push_back(key);
 	}
 	return keys;
+}
+
+std::string Character::GetFacialKey(int a_facialIndex)
+{
+	return GetFacialKeys()[a_facialIndex];
+}
+
+int Character::GetKeyIndex()
+{
+	int _index = 0;
+	for (auto _key : facialSet->keys)
+	{
+		if (_key == facialStr)
+		{
+			return _index;
+		}
+		_index++;
+	}
+	return -1;
 }

@@ -11,6 +11,7 @@ std::unique_ptr<ConstantBuffer<FadeConstants>> Scene::m_cb_fade = nullptr;
 bool Scene::m_initializeChecker = false;
 DirectX::XMFLOAT4 Scene::m_clearColor = { 0.0f,1.0f,0.7f,1.0f };
 DirectX::XMFLOAT4 Scene::m_backColor = { 0.0f,0.0f,0.0f,1.0f };
+DirectX::XMFLOAT2 Scene::screenSize = {};
 
 template <typename T>
 constexpr int sc_i(T value)
@@ -69,6 +70,7 @@ void Scene::CommonInitialize()
 		m_fb_fade = std::make_unique<FrameBuffer>(_device, _graphics.GetScreenWidth(), _graphics.GetScreenHeight());
 		CreatePsFromCso(_device, ".\\Data\\Shader\\black_fade_out_ps.cso", m_fb_ps_fade.GetAddressOf());
 		m_cb_fade = std::make_unique<ConstantBuffer<FadeConstants>>(_device);
+		screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
 		m_initializeChecker = true;
 	}
 }
@@ -78,6 +80,7 @@ void Scene::CommonOnSizeChange()
 	Graphics& _graphics = Graphics::Instance();
 	ID3D11Device* _device = _graphics.GetDevice();
 
+	screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
 	m_fb_fade = std::make_unique<FrameBuffer>(_device, _graphics.GetScreenWidth(), _graphics.GetScreenHeight());
 }
 

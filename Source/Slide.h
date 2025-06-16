@@ -1,12 +1,12 @@
 #pragma once
 #include "Character.h"
+#include "Action.h"
 
 class Slide
 {
 public:
 	enum class Type;
 	Slide(Type a_type = Type::Normal);
-	//Slide(const Slide& slide);
 	~Slide();
 
 	void DeleteCharacter();
@@ -51,7 +51,8 @@ public:
 		archive(
 			CEREAL_NVP(m_type),
 			CEREAL_NVP(m_characters),
-			CEREAL_NVP(m_text)
+			CEREAL_NVP(m_text),
+			CEREAL_NVP(m_actions)
 		);
 	}
 public:
@@ -60,9 +61,8 @@ public:
 	std::set<std::shared_ptr<Character>> m_removes;
 	int m_characterIndex = 0;
 	std::shared_ptr<Sprite> m_backSpr;
-	//std::string m_backSprFilePath{};
+	std::string m_backSprFilePath{};
 	std::string m_text;
-	//std::unordered_map<std::string, std::function<void()>> m_actions;
-	//std::unordered_map<std::string, Action> m_actions;
 	float m_mainTimer{};
+	std::vector<std::shared_ptr<Action>> m_actions;
 };

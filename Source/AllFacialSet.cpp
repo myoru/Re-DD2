@@ -8,14 +8,15 @@ AllFacialSet* AllFacialSet::instance = nullptr;
 
 AllFacialSet::AllFacialSet()
 {
-	/*allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"—EŒ³—²u"), std::make_shared<TestFacials1>());
+	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"—EŒ³—²u"), std::make_shared<TestFacials1>());
+	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"—EŒ³‘å‹P"), std::make_shared<TestFacials2>());
 	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"‚ä‚Á‚­‚è—ì–²"), std::make_shared<ReimuFacials>());
-	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"‚ä‚Á‚­‚è–‚—¹"), std::make_shared<MarisaFacials>());*/
+	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"‚ä‚Á‚­‚è–‚—¹"), std::make_shared<MarisaFacials>());
 
-	allFacialSet.emplace_back("Test1", std::make_shared<TestFacials1>());
+	/*allFacialSet.emplace_back("Test1", std::make_shared<TestFacials1>());
 	allFacialSet.emplace_back("Test2", std::make_shared<TestFacials2>());
 	allFacialSet.emplace_back("Reimu", std::make_shared<ReimuFacials>());
-	allFacialSet.emplace_back("Marisa", std::make_shared<MarisaFacials>());
+	allFacialSet.emplace_back("Marisa", std::make_shared<MarisaFacials>());*/
 
 	instance = this;
 }

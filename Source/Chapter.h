@@ -6,11 +6,11 @@
 class Chapter
 {
 public:
-	Chapter();
+	Chapter()
+	{
+		m_slides.emplace_back(Slide());
+	}
 	~Chapter() {}
-
-	////std::map<std::string, std::shared_ptr<Character>> GetUsedCharacters() { return m_usedCharacters; }
-	//std::vector<std::shared_ptr<Character>>& GetUsedCharacters() { return m_usedCharacters; }
 
 	std::vector<Slide>& GetSlides() { return m_slides; }
 

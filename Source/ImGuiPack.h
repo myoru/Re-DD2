@@ -9,4 +9,5 @@
 //#include "../External/imgui/ImGuizmo.h"　<---必要なファイルごとにincludeすること
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 //extern ImWchar glyphRangesJapanese[];　<---必要なファイルごとにincludeすること
+
 #endif

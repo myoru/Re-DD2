@@ -19,6 +19,7 @@ public:
 	void BoardRender();
 	void TextRender(FXMVECTOR a_textColor = Colors::Red);
 	void ToolRender(bool a_fullscreen,FXMVECTOR a_textColor = Colors::White);
+	void ToolRender2(bool a_fullscreen,FXMVECTOR a_textColor = Colors::White);
 
 	Sprite* GetBoardSprite() { return m_boardSpr.get(); }
 	
@@ -33,6 +34,7 @@ public:
 		char jsonFileName[256]{};								//出力するJsonファイルの名前
 
 		std::string text{};										//描画する文字列
+		std::wstring wText{};										//描画する文字列
 		DirectX::XMFLOAT2 boardPosition{};						//スクリーン空間
 		DirectX::XMFLOAT2 boardLocalPosition{ 0.5f,0.5f };		//スクリーンサイズに対して何割の位置であるか(X成分が0.7fなら横軸の位置は画面の横幅を7:3で分割する位置)
 		DirectX::XMFLOAT2 boardSize{};							//スクリーン空間

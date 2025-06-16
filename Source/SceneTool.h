@@ -5,6 +5,7 @@
 #include "RectUI.h"
 #include <unordered_map>
 
+
 class SceneTool : public Scene
 {
 public:
@@ -28,11 +29,13 @@ public:
 	void ImGuiTextWindow(float a_buttonWidth);
 	void ImGuiAssetsWindow(float a_buttonWidth);
 	void ImGuiAllCharactersWindow(float a_buttonWidth);
+	//Slideウィンドウ用のImGui描画関数
 	void ImGuiSlideWindow();
 	void ImGuiCharactersWindow();
 	void ImGuiEnterWindow();
 	void ImGuiExcuteWindow();
 	void ImGuiExitWindow();
+	//Guizmo関数
 	void ImGuizmoRender();
 #endif // USE_IMGUI
 	//画面サイズ変更時に呼ばれる関数
@@ -62,45 +65,45 @@ private:
 	ScreenSeparateLine m_screenSeparateLine;
 
 	//ScreenView(どのように描画されるか確認できる)
-	DirectX::XMFLOAT2 m_reviewScreenPos = {};
-	DirectX::XMFLOAT2 m_reviewScreenSize = {};
-	DirectX::XMFLOAT2 m_reviewScreenLeftTopPos = {};
-	DirectX::XMFLOAT2 m_reviewScreenRightBottomPos = {};
-	DirectX::XMFLOAT4 m_reviewScreenColor = { 1.0f,1.0f,1.0f,1.0f };
-	DirectX::XMFLOAT2 m_reviewScreenNormalSize = { 16.0f,9.0f };
-	float m_reviewScreenAspectRate = 0.0f;
-	bool m_reviewFullScreenTestFlag = false;
-	float m_charactersWindowRate = 3.0f / 7.0f;
-	float m_charactersWindowWidth = 0.0f;
-	float m_eventWindowRate = 0.0f;
-	float m_eventWindowWidth = 0.0f;
-	DirectX::XMFLOAT2 m_eventWindowDrawStartPos = {};
-	float m_slideWindowHeight = 0.0f;
-	float m_reviewOffsetScale = 0.85f;
+	DirectX::XMFLOAT2 m_reviewScreenPos = {}; //position(Center)
+	DirectX::XMFLOAT2 m_reviewScreenSize = {}; //サイズ
+	DirectX::XMFLOAT2 m_reviewScreenLeftTopPos = {}; //position(LeftTop)
+	DirectX::XMFLOAT2 m_reviewScreenRightBottomPos = {}; //position(RightBottom)
+	DirectX::XMFLOAT4 m_reviewScreenColor = { 1.0f,1.0f,1.0f,1.0f }; //色
+	DirectX::XMFLOAT2 m_reviewScreenNormalSize = { 16.0f,9.0f }; //縦横比
+	float m_reviewScreenAspectRate = 0.0f; //アスペクト比
+	bool m_reviewFullScreenTestFlag = false; //フルスクで表示するかのフラグ
+
+	//ImGuiウィンドウサイズ
+	float m_charactersWindowWidth = 0.0f; //CharacterWindowの横幅
+	float m_eventWindowRate = 0.0f; //EventWindow1つ辺りの横幅((0.0f ~ 1.0f) / 3)
+	float m_eventWindowWidth = 0.0f; //EventWindow1つ辺りの横幅
+	DirectX::XMFLOAT2 m_eventWindowDrawStartPos = {}; //eventWindow(最も左)の描画開始位置
+	float m_slideWindowHeight = 0.0f; //SlideWindowの高さ
+	float m_reviewOffsetScale = 0.85f; //reviewScreenをどのくらいの割合で描画するか
+	DirectX::XMFLOAT2 m_blackSpaceSize{}; //reviewScreenを描画した後の黒い余白のサイズ
 
 	//テキストウィンドウ用ポインタ変数
 	std::vector<std::unique_ptr<SignBoard>> m_signBoards;
+
+	//チャプター用ポインタ変数
 	std::unique_ptr<Chapter> m_chapter;
-	int m_slideIndex = 0;
+	int m_slideIndex = 0; //何枚目のスライドを選択しているかの変数(0なら1枚目)
+	Slide* m_currentSlide;
 
-	DirectX::XMFLOAT2 m_blackSpaceSize{};
+	//Guizmo用変数
+	bool m_usingGuizmo = false;	//Guizmo使用中かのフラグ
+	int m_guizmoType = 0; //Guizmoの操作タイプ(移動 or 拡大・縮小)
 
-	bool m_usingGuizmo = false;
-	int m_guizmoType = 0;
+	std::vector<float> m_lines; //線の配列
+	float lineNormalizeWallDistance = 0.1f; //0.0f ~ 1.0f
+	float lineNormalizeDistance = 0.1f;  //0.0f ~ 1.0f
 
+	std::unordered_map<std::string,std::unique_ptr<RectUI>> m_rectUIs; //当り判定が矩形のUI配列
+	
 	enum class SpriteKind
 	{
 		White,
 		Number,
 	};
-
-	std::vector<float> m_lines;
-	int mainLineIndex = 0;
-	float mainLineNormalizePosition = 0.5f;
-	float lineNormalizeWallDistance = 0.1f;
-	float lineNormalizeDistance = 0.1f;
-	bool mainLineExistFalg = false;
-
-	float m_successOutputTextDrawTimer = 0.0f;
-	std::unordered_map<std::string,std::unique_ptr<RectUI>> m_rectUIs;
 };

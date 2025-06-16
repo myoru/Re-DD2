@@ -26,7 +26,6 @@ public:
 	Graphics graphics;
 	Input input;
 	high_resolution_timer tictoc;
-	AllFacialSet allFacialSet;
 
 	Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter;
 

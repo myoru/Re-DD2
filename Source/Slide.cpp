@@ -5,32 +5,12 @@ Slide::Slide(Type a_type)
 {
 }
 
-//Slide::Slide(const Slide& slide):
-//m_type(slide.m_type),m_text(slide.m_text),m_backSpr(slide.m_backSpr),m_appearingCharacters(std::move(slide.m_appearingCharacters))
-//{
-//
-//}
-
 Slide::~Slide()
 {
 }
 
 void Slide::DeleteCharacter()
 {
-	////”jŠüˆ—
-	//for (auto& _remove : m_removes)
-	//{
-	//	auto _it = std::find(m_characters.begin(), m_characters.end(), _remove);
-
-	//	if (_it != m_characters.end())
-	//	{
-	//		m_characters.erase(_it);
-	//	}
-
-	//	//’eŠÛ‚Ì”jŠüˆ—
-	//	delete _remove;
-	//}
-	
 	m_characters.erase(
 		std::remove_if(
 			m_characters.begin(),
@@ -54,9 +34,14 @@ void Slide::Render(DirectX::XMFLOAT2 a_reviewLeftTopPos, DirectX::XMFLOAT2 a_rev
 		m_backSpr->Render(BasePoint::LeftTop, a_reviewLeftTopPos, a_reviewSize);
 	}
 
+	int _i = 0;
 	for (auto& _character : m_characters)
 	{
-		int _facialIndex = _character->facialIndex;
-		_character->ToolRender(_facialIndex, BasePoint::Center);
+		if (_i == m_characterIndex)
+		{
+			_character->ToolOutLineRender(BasePoint::Center, { 0.75f,0.1f,0.3f,0.3f });
+		}
+		_character->ToolRender(BasePoint::Center);
+		_i++;
 	}
 }

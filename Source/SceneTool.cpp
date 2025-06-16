@@ -7,7 +7,11 @@
 #include "SceneTool.h"
 #include "Dialog.h"
 #include "Input.h"
+#include "StringConvert.h"
 #include "AllFacialSet.h"
+#include "Actions.h"
+
+#define CharactersWindowRate 3.0f / 7.0f
 
 using namespace DirectX;
 
@@ -17,34 +21,14 @@ constexpr int sc_i(T value)
 	return static_cast<int>(value);
 }
 
-std::string ConvertWideToUtf8(const wchar_t* wideStr)
-{
-	if (!wideStr) return {};
-
-	int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, nullptr, 0, nullptr, nullptr);
-	if (sizeNeeded <= 0) return {};
-
-	std::string result(sizeNeeded, 0);
-	WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, &result[0], sizeNeeded, nullptr, nullptr);
-
-	// erase null terminator
-	if (!result.empty() && result.back() == '\0')
-	{
-		result.pop_back();
-	}
-
-	return result;
-}
-
 void SceneTool::Initialize()
 {
 	Graphics& _graphics = Graphics::Instance();
 	ID3D11Device* _device = _graphics.GetDevice();
 	ID3D11DeviceContext* _deviceContext = _graphics.GetDeviceContext();
+	using SeparateType = ScreenSeparateLine::SeparateType;
 	AllFacialSet& _allFacIns = AllFacialSet::Instance();
 	auto _allFacialSet = _allFacIns.GetAllFacialSet();
-
-	using SeparateType = ScreenSeparateLine::SeparateType;
 
 	//Scene識別インデックス設定
 	Scene::SetIndex(sc_i(Scene::Index::Event));
@@ -60,13 +44,15 @@ void SceneTool::Initialize()
 	m_rectUIs["Add"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\Add.png", BasePoint::RightTop);
 	m_rectUIs["DustBox"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\DustBox.png", BasePoint::RightBottom);
 
-	m_reviewScreenPos = { (_graphics.GetScreenWidth() * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) + (_graphics.GetScreenWidth() * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) / 2.0f),
-		(_graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]) / 2.0f };
+	m_reviewScreenPos = { (screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) + (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) / 2.0f),
+		(screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]) / 2.0f };
 	m_reviewScreenAspectRate = m_reviewScreenNormalSize.y / m_reviewScreenNormalSize.x;
-	m_reviewScreenSize.x = (_graphics.GetScreenWidth() * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) * 0.9f;
+	m_reviewScreenSize.x = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) * 0.9f;
 	m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
 
 	m_chapter = std::make_unique<Chapter>();
+
+#if 1
 	std::string _input_json_name = "./Data/Json/";
 	_input_json_name += "/Chapter/";
 	_input_json_name += "Test";
@@ -86,8 +72,11 @@ void SceneTool::Initialize()
 				}
 			);
 			_character->facialSet = _facialSetItr->second;
+			//facialIndexに値を入れる(facialStrから値を取得)
+			_character->facialIndex = _character->GetKeyIndex();
 		}
 	}
+#endif
 }
 
 void SceneTool::Finalize()
@@ -96,14 +85,14 @@ void SceneTool::Finalize()
 	_output_json_name += "/Chapter/";
 	_output_json_name += "Test";
 	_output_json_name += ".json";
+	const auto* text = m_chapter->GetSlides()[0].m_text.c_str();
 	Chapter::SaveSlideValue(_output_json_name.c_str(), *m_chapter);
 }
 
 void SceneTool::Update(float a_elapsedTime)
 {
-	Graphics& _graphics = Graphics::Instance();
-	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
-	Mouse& _mouse = Input::Instance().GetMouse();
+	Graphics& _graphics = Graphics::Instance();	//
+	Mouse& _mouse = Input::Instance().GetMouse();	//
 	Keyboard& _keyboard = Input::Instance().GeKeyboard();
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
@@ -141,36 +130,36 @@ void SceneTool::Update(float a_elapsedTime)
 		float _lineWidth = 5.0f;  //分割線の幅(画面の大きさが 1920：1080 の時を想定した値)
 		//分割線の描画のためのパラメーター(Position,Size)の設定
 		{
-			m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)] = { _screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)],0.0f };
-			m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)] = { _lineWidth * _graphics.GetFeelingSize(), _screenSize.y };
-			m_screenSeparateLine.linePosition[sc_i(SeparateType::LeftHorizontal)] = { 0.0f,_screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] };
-			m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)] = { _screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
+			m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)],0.0f };
+			m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)] = { _lineWidth * _graphics.GetFeelingSize(), screenSize.y };
+			m_screenSeparateLine.linePosition[sc_i(SeparateType::LeftHorizontal)] = { 0.0f,screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] };
+			m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
 				_lineWidth * _graphics.GetFeelingSize() };
-			m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)] = { _screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + (_lineWidth / 2.0f * _graphics.GetFeelingSize()),
-				_screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] };
-			m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)] = { _screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]), _lineWidth * _graphics.GetFeelingSize() };
+			m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + (_lineWidth / 2.0f * _graphics.GetFeelingSize()),
+				screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] };
+			m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]), _lineWidth * _graphics.GetFeelingSize() };
 		}
 	}
 
 	//レビュー画面の描画のためのパラメーター(Position(中心),Size)の設定
 	{
-		m_reviewScreenPos.x = (_graphics.GetScreenWidth() * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) + (_graphics.GetScreenWidth() * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) / 2.0f);
-		m_reviewScreenPos.y = (_graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]) / 2.0f;
+		m_reviewScreenPos.x = (screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) + (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) / 2.0f);
+		m_reviewScreenPos.y = (screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]) / 2.0f;
 	}
 	//横のサイズから決めて縦のサイズは画面のアスペクト比を用いて計算
 	{
 		//最大スケールでレビュー画面が表示されていないなら
 		if (!m_reviewFullScreenTestFlag)
 		{
-			m_reviewScreenSize.x = (_graphics.GetScreenWidth() * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) * m_reviewOffsetScale;
+			m_reviewScreenSize.x = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) * m_reviewOffsetScale;
 			m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
 			m_reviewScreenLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
 			m_reviewScreenRightBottomPos = CalcSquareRightBottomPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
 			//もし、縦のサイズが大きすぎたら、
-			if (m_reviewScreenSize.y > _graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] * m_reviewOffsetScale)
+			if (m_reviewScreenSize.y > screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] * m_reviewOffsetScale)
 			{
 				//縦のサイズを補正してからそれに対応する横のサイズを画面のアスペクト比を用いて計算
-				m_reviewScreenSize.y = _graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] * m_reviewOffsetScale;
+				m_reviewScreenSize.y = screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] * m_reviewOffsetScale;
 				m_reviewScreenSize.x = m_reviewScreenSize.y / m_reviewScreenAspectRate;
 				m_reviewScreenLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
 				m_reviewScreenRightBottomPos = CalcSquareRightBottomPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
@@ -178,7 +167,7 @@ void SceneTool::Update(float a_elapsedTime)
 		}
 		else
 		{
-			m_reviewScreenSize.x = _graphics.GetScreenWidth();
+			m_reviewScreenSize.x = screenSize.x;
 			m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
 			m_reviewScreenLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
 			m_reviewScreenRightBottomPos = CalcSquareRightBottomPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
@@ -186,7 +175,7 @@ void SceneTool::Update(float a_elapsedTime)
 			if (m_reviewScreenLeftTopPos.y < 0.0f)
 			{
 				//縦のサイズを補正してからそれに対応する横のサイズを画面のアスペクト比を用いて計算
-				m_reviewScreenSize.y = _graphics.GetScreenHeight();
+				m_reviewScreenSize.y = screenSize.y;
 				m_reviewScreenSize.x = m_reviewScreenSize.y / m_reviewScreenAspectRate;
 				m_reviewScreenLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
 				m_reviewScreenRightBottomPos = CalcSquareRightBottomPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
@@ -202,9 +191,9 @@ void SceneTool::Update(float a_elapsedTime)
 		m_rectUIs["LTriangle"]->size.x = m_rectUIs["RTriangle"]->size.x = _minBlackSpace * 0.8f;
 		m_rectUIs["LTriangle"]->size.y = m_rectUIs["RTriangle"]->size.y = m_rectUIs["LTriangle"]->size.x * m_rectUIs["LTriangle"]->sprite->GetAspectRation();
 
-		m_rectUIs["DustBox"]->position = { _screenSize.x, m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)].y - m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f };
+		m_rectUIs["DustBox"]->position = { screenSize.x, m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)].y - m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f };
 		m_rectUIs["DustBox"]->size.x = m_rectUIs["DustBox"]->size.y = m_rectUIs["LTriangle"]->size.x;
-		m_rectUIs["Add"]->position = { _screenSize.x, 0.0f };
+		m_rectUIs["Add"]->position = { screenSize.x, 0.0f };
 		m_rectUIs["Add"]->size = m_rectUIs["DustBox"]->size;
 	}
 
@@ -217,6 +206,9 @@ void SceneTool::Update(float a_elapsedTime)
 			m_signBoards.at(i)->Update(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		}
 	}
+
+	m_currentSlide = &m_chapter->GetSlides()[m_slideIndex];
+
 	CharactersUpdate(a_elapsedTime);
 
 	for (const auto& [_, _rectUI] : m_rectUIs)
@@ -263,38 +255,21 @@ void SceneTool::Update(float a_elapsedTime)
 			m_chapter->GetSlides().insert(m_chapter->GetSlides().begin() + m_slideIndex + 1, Slide());
 			m_slideIndex++;
 		}
+
+		m_currentSlide = &m_chapter->GetSlides()[m_slideIndex];
 	}
 
-	m_eventWindowRate = (1.0f - m_charactersWindowRate) / 3.0f;
-	m_charactersWindowWidth = _screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) * m_charactersWindowRate - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f;
-	m_eventWindowWidth = (_screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) - m_charactersWindowWidth) / 3.0f;
-	m_eventWindowDrawStartPos.x = _screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
-	m_eventWindowDrawStartPos.y = _screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
-	m_slideWindowHeight = _screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
+	m_eventWindowRate = (1.0f - CharactersWindowRate) / 3.0f;
+	m_charactersWindowWidth = screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) * CharactersWindowRate - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f;
+	m_eventWindowWidth = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) - m_charactersWindowWidth) / 3.0f;
+	m_eventWindowDrawStartPos.x = screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
+	m_eventWindowDrawStartPos.y = screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
+	m_slideWindowHeight = screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
 
 	if (m_lines.size())
 	{
-		int i = 0;
-		/*float _remainedDIstance = (1.0f - (lineNormalizeWallDistance * 2.0f));*/
-		/*if (m_lines.size() % 2 == 1)
-		{
-			for (float _linePos : m_lines)
-			{
-				_linePos = _remainedDIstance
-					i++;
-			}
-		}
-		else
-		{
-			for (float _linePos : m_lines)
-			{
-				_linePos = _remainedDIstance
-					i++;
-			}
-		}*/
+		int _i = 0;
 		float _remainedSpace = 1.0f - lineNormalizeWallDistance;
-		/*float ditanseRate = (1.0f - lineNormalizeDistance);*/
-		//float ggg = 1.0f / m_lines.size();
 		if (m_lines.size() == 1)
 		{
 			m_lines[0] = 0.5f;
@@ -305,15 +280,15 @@ void SceneTool::Update(float a_elapsedTime)
 			float _lineStartPosition = lineNormalizeWallDistance / 2.0f + (_remainedSpace * (1.0f - lineNormalizeDistance) / 2.0f);
 			for (float& _linePos : m_lines)
 			{
-				if (i == 0)
+				if (_i == 0)
 				{
 					_linePos = _lineStartPosition;
 				}
 				else
 				{
-					_linePos = _lineStartPosition + (_lineToLineSpace * lineNormalizeDistance * i);
+					_linePos = _lineStartPosition + (_lineToLineSpace * lineNormalizeDistance * _i);
 				}
-				i++;
+				_i++;
 			}
 		}
 	}
@@ -321,16 +296,16 @@ void SceneTool::Update(float a_elapsedTime)
 
 void SceneTool::CharactersUpdate(float a_elapsedTime)
 {
-	if (m_chapter && m_chapter->GetSlides()[m_slideIndex].m_characters.size())
+	if (m_chapter && m_currentSlide->m_characters.size())
 	{
 		for (auto& _slide : m_chapter->GetSlides())
 		{
 			_slide.DeleteCharacter();
 		}
 
-		for (int i = 0, iEnd = m_chapter->GetSlides()[m_slideIndex].m_characters.size(); i < iEnd; i++)
+		for (int i = 0, iEnd = m_currentSlide->m_characters.size(); i < iEnd; i++)
 		{
-			m_chapter->GetSlides()[m_slideIndex].m_characters[i]->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
+			m_currentSlide->m_characters[i]->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		}
 	}
 }
@@ -343,9 +318,6 @@ void SceneTool::Render(float elapsedTime)
 	Mouse& _mouse = Input::Instance().GetMouse();
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
-
-	//画面サイズ
-	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
 
 	//RenderTargetのClear
 	ClearRenderTarget();
@@ -365,13 +337,13 @@ void SceneTool::Render(float elapsedTime)
 
 		//キャラクター描画
 		{
-			/*for (int i = 0, iEnd = m_chapter->GetSlides()[m_slideIndex].m_characters.size(); i < iEnd; i++)
+			/*for (int i = 0, iEnd = m_currentSlide->m_characters.size(); i < iEnd; i++)
 			{
-				int _facialIndex = m_chapter->GetSlides()[m_slideIndex].m_characters.at(i)->facialIndex;
-				m_chapter->GetSlides()[m_slideIndex].m_characters[i]->ToolRender(_facialIndex, BasePoint::Center);
+				int _facialIndex = m_currentSlide->m_characters.at(i)->facialIndex;
+				m_currentSlide->m_characters[i]->ToolRender(_facialIndex, BasePoint::Center);
 			}*/
 
-			m_chapter->GetSlides()[m_slideIndex].Render(m_reviewScreenLeftTopPos, m_reviewScreenSize);
+			m_currentSlide->Render(m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		}
 
 		//看板(m_signBoard)が一つでも登録されていれば
@@ -390,6 +362,11 @@ void SceneTool::Render(float elapsedTime)
 			for (int i = 0; i < m_signBoards.size(); i++)
 			{
 				m_signBoards.at(i)->ToolRender(m_reviewFullScreenTestFlag);
+				//m_signBoards.at(i)->BoardRender();
+			}
+			for (int i = 0; i < m_signBoards.size(); i++)
+			{
+				//m_signBoards.at(i)->TextRender();
 			}
 		}
 
@@ -507,9 +484,9 @@ void SceneTool::ImGuiOperationWindow()
 	Graphics& _graphics = Graphics::Instance();
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
-	XMFLOAT2 _windowPos = { 0.0f,_graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
-	XMFLOAT2 _windowSize = { _graphics.GetScreenWidth() * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
-		_graphics.GetScreenHeight() * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)]) - m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
+	XMFLOAT2 _windowPos = { 0.0f,screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
+	XMFLOAT2 _windowSize = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
+		screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)]) - m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
 	ImGui::SetNextWindowPos(ImVec2(_windowPos.x, _windowPos.y), ImGuiCond_Always);
@@ -518,10 +495,90 @@ void SceneTool::ImGuiOperationWindow()
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
 	ImGui::Begin("Operation", nullptr, _flags);
 
-	if (m_chapter->GetSlides()[m_slideIndex].m_characters.size())
+	if (m_currentSlide->m_characters.size())
 	{
-		ImGui::SliderInt("Character Index", &m_chapter->GetSlides()[m_slideIndex].m_characterIndex, 0, m_chapter->GetSlides()[m_slideIndex].m_characters.size() - 1);
+		ImGui::SliderInt("Character Index", &m_currentSlide->m_characterIndex, 0, m_currentSlide->m_characters.size() - 1);
+
+		const auto _character = m_currentSlide->m_characters.at(m_currentSlide->m_characterIndex);
+		Sprite* _characterSprite = _character->facialSet->GetFacial(_character->facialIndex).get();
+		float _imageLimitSize = screenSize.y * 0.1f;
+		ImVec2 _imageSize = { _imageLimitSize, 0.0f };
+		_imageSize.y = _imageSize.x * _characterSprite->GetAspectRation();
+		if (_imageSize.y > _imageLimitSize)
+		{
+			_imageSize.y = _imageLimitSize;
+			_imageSize.x = _imageSize.y / _characterSprite->GetAspectRation();
+		}
+		ImGui::Image(_characterSprite->GetShaderResource(), _imageSize);
+
+		auto& _selectSlide = m_chapter->GetSlides()[m_slideIndex];
+
+		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.5f, 0.2f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.2f, 0.9f, 0.2f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.2f, 0.9f, 0.2f, 1.0f)); //色変更
+		if (ImGui::CollapsingHeader("Layer", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			for (int i = _selectSlide.m_characters.size() - 1; i >= 0; i--)
+			{
+				ImGui::PushID(i);
+
+				// グループで囲んで1行に画像＋名前を表示
+				ImGui::BeginGroup();
+
+				// Selectable 領域の始まり
+				if (ImGui::Selectable(_selectSlide.m_characters[i]->name.c_str()))
+				{
+					m_currentSlide->m_characterIndex = i;
+				}
+				ImGui::SameLine();
+
+				auto& _character = m_currentSlide->m_characters.at(i);
+
+				int _index = _character->facialIndex;
+				Sprite* _facialSprite = _character->facialSet->GetFacial(_index).get();
+				ImVec2 _imageSize = ImGui::GetItemRectSize();
+				_imageSize.x = _imageSize.y / _facialSprite->GetAspectRation();
+				ImGui::Image(_facialSprite->GetShaderResource(), _imageSize);
+
+				ImGui::EndGroup();
+
+				// ドラッグ元
+				if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+				{
+					ImGui::SetDragDropPayload("DND_ITEM", &i, sizeof(int));
+					ImGui::Text("%s", _selectSlide.m_characters[i]->name.c_str());
+					ImGui::EndDragDropSource();
+				}
+
+				// ドロップ先
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ITEM"))
+					{
+						int payloadIndex = *(const int*)payload->Data;
+
+						if (payloadIndex != i)
+						{
+							std::swap(_selectSlide.m_characters[i], _selectSlide.m_characters[payloadIndex]);
+
+							if (m_currentSlide->m_characterIndex == payloadIndex)
+								m_currentSlide->m_characterIndex = i;
+							else if (m_currentSlide->m_characterIndex == i)
+								m_currentSlide->m_characterIndex = payloadIndex;
+						}
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				ImGui::PopID();
+			}
+			ImGui::Separator();
+			ImGui::Separator();
+			ImGui::Separator();
+		}
+		ImGui::PopStyleColor(3);	//色変更終了処理
 	}
+
 	if (ImGui::TreeNodeEx("Guozmo", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		if (ImGui::TreeNodeEx("Guizmo Mode", ImGuiTreeNodeFlags_DefaultOpen))
@@ -569,8 +626,8 @@ void SceneTool::ImGuiAssetsWindow(float a_buttonWidth)
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
 	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
-	XMFLOAT2 _windowSize = { _graphics.GetScreenWidth() * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
-		_graphics.GetScreenHeight() * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
+	XMFLOAT2 _windowSize = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
+		screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
 	ImGui::SetNextWindowSize(ImVec2(_windowSize.x, _windowSize.y), ImGuiCond_Always);
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.7f, 0.7f, 0.4f, 1.0f));
@@ -617,12 +674,34 @@ void SceneTool::ImGuiAssetsWindow(float a_buttonWidth)
 					MultiByteToWideChar(CP_ACP, 0, _selectImageName, -1, wideBuffer, 256); //(wchar_t <--- char)
 					//絶対パスを相対パス化
 					auto _spriteFilePath = std::filesystem::relative(wideBuffer);
-					m_chapter->GetSlides()[m_slideIndex].m_backSpr = std::make_shared<Sprite>(_spriteFilePath.wstring().c_str());
+					m_currentSlide->m_backSpr = std::make_shared<Sprite>(_spriteFilePath.wstring().c_str());
 				}
 				ImGui::Separator();
 			}
-			ImGui::PopStyleColor(3);	//色変更終了処理
 		}
+		ImGui::PopStyleColor(3);	//色変更終了処理
+
+		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.3f, 0.0f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.8f, 0.8f, 0.0f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 0.2f, 1.0f)); //色変更
+		if (ImGui::CollapsingHeader("Action", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::Button("Test", ImVec2(a_buttonWidth, 0.0f)))
+			{
+				switch (m_currentSlide->m_actions.size())
+				{
+				case 0:
+					m_currentSlide->m_actions.emplace_back(std::make_shared<Vibe>(Action::Data{}));
+					break;
+				case 1:
+					m_currentSlide->m_actions.emplace_back(std::make_shared<MusicStart>(Action::Data{}));
+					break;
+				}
+			}
+			ImGui::Text(std::to_string(m_currentSlide->m_actions.size()).c_str());
+			ImGui::Separator();
+		}
+		ImGui::PopStyleColor(3);	//色変更終了処理
 	}
 	ImGui::End();
 	ImGui::PopStyleColor(2);
@@ -647,11 +726,11 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 				float _boardSpriteScaleX = 0.6f;
 				XMFLOAT2 _imageDrawSize = { _windowSize.x * _boardSpriteScaleX ,_windowSize.x * _boardSpriteScaleX * m_signBoards.at(i)->GetBoardSprite()->GetAspectRation() };
 				//もし、縦のサイズが大きすぎたら、
-				if (_imageDrawSize.y > _graphics.GetScreenHeight() * 0.2f)
+				if (_imageDrawSize.y > screenSize.y * 0.2f)
 				{
 					float _boardSpriteScaleY = 0.15f;
 					//縦のサイズを補正して、それに応じた横のサイズを設定する
-					_imageDrawSize.y = _graphics.GetScreenHeight() * _boardSpriteScaleY;
+					_imageDrawSize.y = screenSize.y * _boardSpriteScaleY;
 					_imageDrawSize.x = _imageDrawSize.y / m_signBoards.at(i)->GetBoardSprite()->GetAspectRation();
 				}
 				//レビュー描画
@@ -664,6 +743,36 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 					IM_ARRAYSIZE(m_signBoards.at(i)->m_inputBuffer), // バッファサイズ
 					ImVec2(ImGui::GetWindowSize().x * 0.75f, ImGui::GetWindowSize().y * 0.05f));
 
+				wchar_t _wideBuffer[256] = {};
+				MultiByteToWideChar(CP_UTF8, 0, m_signBoards.at(i)->m_inputBuffer, -1, _wideBuffer, 256);
+
+				m_currentSlide->m_text = ConvertWideToUtf8(_wideBuffer);
+
+				m_signBoards.at(i)->jElements.wText = _wideBuffer;
+				m_signBoards.at(i)->jElements.text = m_currentSlide->m_text = WideToUtf8(m_signBoards.at(i)->jElements.wText);
+
+				//m_signBoards.at(i)->jElements.text = m_currentSlide->m_text;
+
+				//std::string& slideText = m_currentSlide->m_text;
+
+				//// 毎フレームバッファを作る（パフォーマンスに問題がなければ簡単で安全）
+				//std::vector<char> buffer(slideText.begin(), slideText.end());
+				//buffer.resize(buffer.size() + 1024); // 余裕をもたせてサイズを確保
+				//buffer[slideText.size()] = '\0'; // null 終端
+
+				//std::string _label = "##" + std::to_string(i);
+				//ImVec2 _InputAreaSize(ImGui::GetWindowSize().x * 0.75f, ImGui::GetWindowSize().y * 0.05f);
+				//if (ImGui::InputTextMultiline(_label.c_str(), buffer.data(), buffer.size(),
+				//	ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 16),
+				//	ImGuiInputTextFlags_AllowTabInput)) {
+				//	slideText = std::string(buffer.data());
+				//}
+				//m_signBoards[i]->jElements.text = slideText;
+
+				/*std::string _label = "##" + std::to_string(i);
+				ImVec2 _InputAreaSize(ImGui::GetWindowSize().x * 0.75f, ImGui::GetWindowSize().y * 0.05f);
+				InputTextMultilineString(_label, m_currentSlide->m_text, _InputAreaSize);
+				m_signBoards[i]->jElements.text = m_currentSlide->m_text;*/
 
 				/*wchar_t _wideBuffer[256] = {};
 				MultiByteToWideChar(CP_UTF8, 0, m_signBoards.at(i)->m_inputBuffer, -1, _wideBuffer, 256);
@@ -724,13 +833,10 @@ void SceneTool::ImGuiAllCharactersWindow(float a_buttonWidth)
 	AllFacialSet& _allFacIns = AllFacialSet::Instance();
 	auto _allFacialSet = _allFacIns.GetAllFacialSet();
 
-	//画面サイズ
-	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
-
 	std::vector<std::string> _characterKeys{};
 	std::vector<const char*> _cstrItems;
 	static int _currentItem = 0;
-	float _imageLimitHeight = _screenSize.y * 0.1f;
+	float _imageLimitHeight = screenSize.y * 0.1f;
 	if (_allFacialSet.size())
 	{
 		for (auto& [_key, _character] : _allFacialSet)
@@ -765,13 +871,66 @@ void SceneTool::ImGuiAllCharactersWindow(float a_buttonWidth)
 			}
 		);
 
-		auto& appearingCharacters = m_chapter->GetSlides()[m_slideIndex].m_characters;
+		auto& appearingCharacters = m_currentSlide->m_characters;
 		if (std::none_of(appearingCharacters.begin(), appearingCharacters.end(),
 			[&](const auto& c) { return c->name == _facialSetItr->first; }))
 		{
+			//appearingCharacters.insert(appearingCharacters.begin(), std::make_shared<Character>(_facialSetItr->first, _facialSetItr->second));
 			appearingCharacters.emplace_back(std::make_shared<Character>(_facialSetItr->first, _facialSetItr->second));
 		}
 	}
+
+	//Graphics& _graphics = Graphics::Instance();
+	//ID3D11Device* _device = _graphics.GetDevice();
+	//ID3D11DeviceContext* _deviceContext = _graphics.GetDeviceContext();
+	//AllFacialSet& _allFacIns = AllFacialSet::Instance();
+	//auto _allFacialSet = _allFacIns.GetAllFacialSet();
+
+	//std::vector<std::string> _characterKeys{};
+	//std::vector<const char*> _cstrItems;
+	//static int _currentItem = 0;
+	//float _imageLimitHeight = screenSize.y * 0.1f;
+	//if (_allFacialSet.size())
+	//{
+	//	for (auto& [_key, _character] : _allFacialSet)
+	//	{
+	//		_characterKeys.push_back(_key);
+	//	}
+	//	// 一時的に const char* の配列を作成（ImGui::Combo 用）
+	//	for (const auto& str : _characterKeys)
+	//	{
+	//		_cstrItems.push_back(str.c_str());
+	//	}
+	//	ImGui::Combo("Character", &_currentItem, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
+
+	//	Sprite* _characterSprite = _allFacIns.GetFacialSet(_currentItem)->GetFacial(0).get();
+	//	ImVec2 _imageSize = { a_buttonWidth, a_buttonWidth * _characterSprite->GetAspectRation() };
+	//	if (_imageSize.y > _imageLimitHeight)
+	//	{
+	//		_imageSize.y = _imageLimitHeight;
+	//		_imageSize.x = _imageSize.y / _characterSprite->GetAspectRation();
+	//	}
+	//	ImGui::Image(_characterSprite->GetShaderResource(), _imageSize);
+	//}
+
+	//if (ImGui::Button("Add Select Character", ImVec2(a_buttonWidth, 0.0f)))
+	//{
+	//	const std::string& _key = _characterKeys[_currentItem];
+	//	auto _facialSetItr = std::find_if(
+	//		_allFacialSet.begin(), _allFacialSet.end(),
+	//		[&](std::pair<std::string, std::shared_ptr<FacialSet>>& pair)
+	//		{
+	//			return pair.first == _key;
+	//		}
+	//	);
+
+	//	auto& appearingCharacters = m_currentSlide->m_characters;
+	//	if (std::none_of(appearingCharacters.begin(), appearingCharacters.end(),
+	//		[&](const auto& c) { return c->name == _facialSetItr->first; }))
+	//	{
+	//		appearingCharacters.emplace_back(std::make_shared<Character>(_facialSetItr->first, _facialSetItr->second));
+	//	}
+	//}
 }
 
 void SceneTool::ImGuiSlideWindow()
@@ -786,11 +945,10 @@ void SceneTool::ImGuiCharactersWindow()
 {
 	Graphics& _graphics = Graphics::Instance();
 	//画面サイズ
-	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
 	XMFLOAT2 _windowSize = { m_charactersWindowWidth,m_slideWindowHeight };
-	ImGui::SetNextWindowPos(ImVec2(_screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f, m_eventWindowDrawStartPos.y), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f, m_eventWindowDrawStartPos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(_windowSize.x, _windowSize.y), ImGuiCond_Always);
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.6f, 0.15f, 0.6f, 1.0f));
@@ -799,56 +957,19 @@ void SceneTool::ImGuiCharactersWindow()
 	{
 		if (m_chapter)
 		{
-			if (m_chapter->GetSlides()[m_slideIndex].m_characters.size())
+			if (m_currentSlide->m_characters.size())
 			{
-				auto& _selectSlide = m_chapter->GetSlides()[m_slideIndex];
-
-				for (int i = 0; i < _selectSlide.m_characters.size(); ++i)
-				{
-					// ユニークIDを確保する
-					ImGui::PushID(i);
-
-					// 表示（選択可能）
-					ImGui::Selectable(_selectSlide.m_characters[i]->name.c_str());
-
-					// ドラッグ元
-					if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
-					{
-						ImGui::SetDragDropPayload("DND_ITEM", &i, sizeof(int));  // インデックスをペイロードとして渡す
-						ImGui::Text("%s", _selectSlide.m_characters[i]->name.c_str());
-						ImGui::EndDragDropSource();
-					}
-
-					// ドロップ先
-					if (ImGui::BeginDragDropTarget())
-					{
-						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ITEM"))
-						{
-							int payloadIndex = *(const int*)payload->Data;
-
-							// 要素の並び替え
-							if (payloadIndex != i)
-							{
-								std::swap(_selectSlide.m_characters[i], _selectSlide.m_characters[payloadIndex]);
-							}
-						}
-						ImGui::EndDragDropTarget();
-					}
-
-					ImGui::PopID();
-				}
-
 				std::vector<std::string> _facialsKeys{};
 				std::vector<const char*> _cstrItems;
 				float _spriteSizeX = ImGui::GetWindowSize().x * 0.5f;
-				XMFLOAT2 _imageLimitSize = { _screenSize.x * 0.1f, _screenSize.y * 0.1f };
-				for (int i = 0, iEnd = m_chapter->GetSlides()[m_slideIndex].m_characters.size(); i < iEnd; i++)
+				XMFLOAT2 _imageLimitSize = { screenSize.x * 0.1f, screenSize.y * 0.1f };
+				for (int i = m_currentSlide->m_characters.size() - 1; i >= 0; i--)
 				{
-					auto& _charcter = m_chapter->GetSlides()[m_slideIndex].m_characters.at(i);
+					auto& _character = m_currentSlide->m_characters.at(i);
 
 					_facialsKeys.clear();
 					_cstrItems.clear();
-					for (auto& _key : _charcter->GetFacialSet()->keys)
+					for (auto& _key : _character->facialSet->keys)
 					{
 						_facialsKeys.emplace_back(_key);	// ← ここで _facialsKeys が文字列の実体を保持
 					}
@@ -856,11 +977,13 @@ void SceneTool::ImGuiCharactersWindow()
 					{
 						_cstrItems.push_back(str.c_str());	// ← 安全にポインタを取得
 					}
-					std::string _comboLabel = "Facial##" + std::to_string(i);
-					ImGui::Combo(_comboLabel.c_str(), &_charcter->facialIndex, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
 
-					int _index = _charcter->facialIndex;
-					Sprite* _facialSprite = _charcter->GetFacialSet()->GetFacial(_index).get();
+					std::string _comboLabel = "Facial##" + std::to_string(i);
+					ImGui::Combo(_comboLabel.c_str(), &_character->facialIndex, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
+					_character->facialStr = _character->facialSet->GetKey(_character->facialIndex);
+
+					int _index = _character->facialIndex;
+					Sprite* _facialSprite = _character->facialSet->GetFacial(_index).get();
 					ImVec2 _imageSize = { _imageLimitSize.x, _imageLimitSize.x * _facialSprite->GetAspectRation() };
 					if (_imageSize.y > _imageLimitSize.y)
 					{
@@ -872,7 +995,7 @@ void SceneTool::ImGuiCharactersWindow()
 					std::string _deleteButtonLabel = "Delete Character##" + std::to_string(i);
 					if (ImGui::Button(_deleteButtonLabel.c_str(), ImVec2(_spriteSizeX, 0.0f)))
 					{
-						m_chapter->GetSlides()[m_slideIndex].m_removes.insert(_charcter);
+						m_currentSlide->m_removes.insert(_character);
 					}
 					ImGui::Separator();
 				}
@@ -886,8 +1009,6 @@ void SceneTool::ImGuiCharactersWindow()
 void SceneTool::ImGuiEnterWindow()
 {
 	Graphics& _graphics = Graphics::Instance();
-	//画面サイズ
-	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
@@ -908,8 +1029,6 @@ void SceneTool::ImGuiEnterWindow()
 void SceneTool::ImGuiExcuteWindow()
 {
 	Graphics& _graphics = Graphics::Instance();
-	//画面サイズ
-	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
@@ -929,8 +1048,6 @@ void SceneTool::ImGuiExcuteWindow()
 void SceneTool::ImGuiExitWindow()
 {
 	Graphics& _graphics = Graphics::Instance();
-	//画面サイズ
-	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
@@ -952,9 +1069,9 @@ void SceneTool::ImGuizmoRender()
 {
 	Graphics& _graphics = Graphics::Instance();
 
-	if (!m_chapter->GetSlides()[m_slideIndex].m_characters.size())return;
+	if (!m_currentSlide->m_characters.size())return;
 
-	int _selectCharacterIndex = m_chapter->GetSlides()[m_slideIndex].m_characterIndex;
+	int _selectCharacterIndex = m_currentSlide->m_characterIndex;
 
 	//Guizmoの作業領域
 	ImVec2 _guizmoTaskPos = {}, _guizmoTaskSize = {};
@@ -965,32 +1082,9 @@ void SceneTool::ImGuizmoRender()
 
 	_guizmoTaskPos = { m_reviewScreenLeftTopPos.x,m_reviewScreenLeftTopPos.y };
 	_guizmoTaskSize = { m_reviewScreenSize.x,m_reviewScreenSize.y };
-	_selectS = DirectX::XMMatrixScaling(m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.x, m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.y, 1.0f);
-	_selectT = DirectX::XMMatrixTranslation(m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.x, m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.y, 0.0f);
+	_selectS = DirectX::XMMatrixScaling(m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x, m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y, 1.0f);
+	_selectT = DirectX::XMMatrixTranslation(m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x, m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y, 0.0f);
 
-	/*switch (static_cast<SelectObject>(m_editElements.selectObjectIndex))
-	{
-	case SelectObject::Board:
-		_guizmoTaskPos = { m_reviewBoard.leftTopPos.x,m_reviewBoard.leftTopPos.y };
-		_guizmoTaskSize = { m_reviewBoard.size.x,m_reviewBoard.size.y };
-		_selectS = DirectX::XMMatrixScaling(m_editElements.jElements.boardLocalSize.x, m_editElements.jElements.boardLocalSize.y, 1.0f);
-		_selectT = DirectX::XMMatrixTranslation(m_editElements.jElements.boardLocalPosition.x, m_editElements.jElements.boardLocalPosition.y, 0.0f);
-		break;
-	case SelectObject::DrawableArea:
-		XMFLOAT2 _boardLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_editElements.jElements.boardPosition, m_editElements.jElements.boardSize);
-		_guizmoTaskPos = { _boardLeftTopPos.x,_boardLeftTopPos.y };
-		_guizmoTaskSize = { m_editElements.jElements.boardSize.x,m_editElements.jElements.boardSize.y };
-		_selectS = DirectX::XMMatrixScaling(m_editElements.jElements.textDrawableAreaLocalSize.x, m_editElements.jElements.textDrawableAreaLocalSize.y, 1.0f);
-		_selectT = DirectX::XMMatrixTranslation(m_editElements.jElements.textDrawableAreaLocalPosition.x, m_editElements.jElements.textDrawableAreaLocalPosition.y, 0.0f);
-		break;
-	case SelectObject::TextStartPosition:
-		XMFLOAT2 _textDrawableAreaLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_editElements.jElements.textDrawableAreaPosition, m_editElements.jElements.textDrawableAreaSize);
-		_guizmoTaskPos = { _textDrawableAreaLeftTopPos.x,_textDrawableAreaLeftTopPos.y };
-		_guizmoTaskSize = { m_editElements.jElements.textDrawableAreaSize.x,m_editElements.jElements.textDrawableAreaSize.y };
-		_selectS = DirectX::XMMatrixScaling(1.0f, m_editElements.jElements.textLocalHeight, 1.0f);
-		_selectT = DirectX::XMMatrixTranslation(m_editElements.jElements.textDrawStartLocalPosition.x, m_editElements.jElements.textDrawStartLocalPosition.y, 0.0f);
-		break;
-	}*/
 	ImGuizmo::SetRect(_guizmoTaskPos.x, _guizmoTaskPos.y, _guizmoTaskSize.x, _guizmoTaskSize.y);
 	DirectX::XMStoreFloat4x4(&_guizmoTransform, _selectS * _selectR * _selectT);
 
@@ -1009,17 +1103,17 @@ void SceneTool::ImGuizmoRender()
 		XMMATRIX _newTransform = XMLoadFloat4x4(&_guizmoTransform);
 		XMMatrixDecompose(&_scale, &_rotation, &_translation, _newTransform);
 
-		XMStoreFloat2(&m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize, _scale);
-		m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.x = std::clamp(
-			m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.x, FLT_EPSILON, 5.0f);
-		m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.y = std::clamp(
-			m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizeSize.y, FLT_EPSILON, 5.0f);
+		XMStoreFloat2(&m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize, _scale);
+		m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x = std::clamp(
+			m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x, FLT_EPSILON, 5.0f);
+		m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y = std::clamp(
+			m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y, FLT_EPSILON, 5.0f);
 
-		XMStoreFloat2(&m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition, _translation);
-		m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.x = std::clamp(
-			m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.x, FLT_EPSILON, 1.0f);
-		m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.y = std::clamp(
-			m_chapter->GetSlides()[m_slideIndex].m_characters[_selectCharacterIndex]->normalizePosition.y, FLT_EPSILON, 1.0f);
+		XMStoreFloat2(&m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition, _translation);
+		m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x = std::clamp(
+			m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x, FLT_EPSILON, 1.0f);
+		m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y = std::clamp(
+			m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y, FLT_EPSILON, 1.0f);
 	}
 }
 
@@ -1185,7 +1279,7 @@ void SceneTool::ScreenSeparateLine::MouseHitCheck()
 void SceneTool::ScreenSeparateLine::LineMove()
 {
 	Graphics& _graphics = Graphics::Instance();
-	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
+	XMFLOAT2 _screenSize = Scene::screenSize;
 	Mouse& _mouse = Input::Instance().GetMouse();
 
 	if (lineHoldFlag[sc_i(SeparateType::Vertical)])
