@@ -21,7 +21,8 @@ public:
 	void ModeChange(); //モード切り替え関数
 	void ReviewBoardUpdate();
 	void CharactersUpdate(float a_elapsedTime); //キャラクター更新処理
-	void RectUIHitCheck(); //キャラクター更新処理
+	void RectUIUpdate(); //矩形UI更新処理
+	void RectUIHitCheck(); //矩形UI当り判定
 	void LineUpdate();
 	//描画処理
 	void Render(float elapsedTime)override;

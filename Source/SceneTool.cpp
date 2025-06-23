@@ -108,6 +108,8 @@ void SceneTool::Update(float a_elapsedTime)
 	ModeChange();
 	//レビュー画面パラメーター更新
 	ReviewBoardUpdate();
+	//矩形UIパラメーター更新
+	RectUIUpdate();
 
 	//現在選択中のスライド更新
 	m_currentSlide = &m_chapter->GetSlides()[m_slideIndex];
@@ -155,19 +157,26 @@ void SceneTool::ReviewBoardUpdate()
 	Graphics& _graphics = Graphics::Instance();
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
-	float _lineWidth = 5.0f * _graphics.GetFeelingSize();  //分割線の幅(画面の大きさが 1920：1080 の時を想定した値)
-
-	//分割線の描画のためのパラメーター(Position,Size)の設定
+	//最大スケールでレビュー画面が表示されていないなら
+	if (!m_reviewFullScreenTestFlag)
 	{
-		m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)],0.0f };
-		m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)] = { _lineWidth, screenSize.y };
-		m_screenSeparateLine.linePosition[sc_i(SeparateType::LeftHorizontal)] = { 0.0f,screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] };
-		m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,_lineWidth };
+		m_screenSeparateLine.LineMove();//分割線を動かす
+		m_reviewScreenAspectRate = m_reviewScreenNormalSize.y / m_reviewScreenNormalSize.x;//レビュー画面のアスペクト比を更新
 
-		m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + (_lineWidth / 2.0f * _graphics.GetFeelingSize()),
-		screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] };
-		m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]), _lineWidth * _graphics.GetFeelingSize() };
+		float _lineWidth = 5.0f;  //分割線の幅(画面の大きさが 1920：1080 の時を想定した値)
+		//分割線の描画のためのパラメーター(Position,Size)の設定
+		{
+			m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)],0.0f };
+			m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)] = { _lineWidth * _graphics.GetFeelingSize(), screenSize.y };
+			m_screenSeparateLine.linePosition[sc_i(SeparateType::LeftHorizontal)] = { 0.0f,screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] };
+			m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
+				_lineWidth * _graphics.GetFeelingSize() };
+			m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + (_lineWidth / 2.0f * _graphics.GetFeelingSize()),
+				screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] };
+			m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]), _lineWidth * _graphics.GetFeelingSize() };
+		}
 	}
+
 	//レビュー画面の描画のためのパラメーター(Position(中心),Size)の設定
 	{
 		m_reviewScreenPos.x = (screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) + (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) / 2.0f);
@@ -176,7 +185,7 @@ void SceneTool::ReviewBoardUpdate()
 	//横のサイズから決めて縦のサイズは画面のアスペクト比を用いて計算
 	{
 		//最大スケールでレビュー画面が表示されていないなら
-		if (m_mode == Mode::Check || m_mode == Mode::Slideshow)
+		if (!m_reviewFullScreenTestFlag)
 		{
 			m_reviewScreenSize.x = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) * m_reviewOffsetScale;
 			m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
@@ -228,6 +237,23 @@ void SceneTool::CharactersUpdate(float a_elapsedTime)
 			m_currentSlide->m_characters[i]->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		}
 	}
+}
+
+void SceneTool::RectUIUpdate()
+{
+	using SeparateType = ScreenSeparateLine::SeparateType;
+
+	float _minBlackSpace = m_blackSpaceSize.x <= m_blackSpaceSize.y ? m_blackSpaceSize.x : m_blackSpaceSize.y;
+
+	m_rectUIs["LTriangle"]->position = { m_reviewScreenLeftTopPos.x - _minBlackSpace / 2.0f ,m_reviewScreenPos.y };
+	m_rectUIs["RTriangle"]->position = { m_reviewScreenRightBottomPos.x + _minBlackSpace / 2.0f,m_reviewScreenPos.y };
+	m_rectUIs["LTriangle"]->size.x = m_rectUIs["RTriangle"]->size.x = _minBlackSpace * 0.8f;
+	m_rectUIs["LTriangle"]->size.y = m_rectUIs["RTriangle"]->size.y = m_rectUIs["LTriangle"]->size.x * m_rectUIs["LTriangle"]->sprite->GetAspectRation();
+
+	m_rectUIs["DustBox"]->position = { screenSize.x, m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)].y - m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f };
+	m_rectUIs["DustBox"]->size.x = m_rectUIs["DustBox"]->size.y = m_rectUIs["LTriangle"]->size.x;
+	m_rectUIs["Add"]->position = { screenSize.x, 0.0f };
+	m_rectUIs["Add"]->size = m_rectUIs["DustBox"]->size;
 }
 
 void SceneTool::RectUIHitCheck()
