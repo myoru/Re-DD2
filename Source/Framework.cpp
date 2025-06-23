@@ -1,19 +1,19 @@
 ﻿#include "Framework.h"
 
 //Scene系
-#include "SceneManager.h"
 #include "SceneLoading.h"
 #include "SceneTool.h"
 
 Framework::Framework(HWND hWnd, bool fullscreen) : hWnd(hWnd), graphics(hWnd, fullscreen), input(hWnd)
 {
 	//どのシーンからスタートするかをココで決める
-	SceneManager::Instance().ChangeScene(new SceneLoading(new SceneTool())); //タイトルからスタート
+	//m_sceneManager.Initialize();
+	m_sceneManager.ChangeScene(new SceneLoading(new SceneTool())); //タイトルからスタート
 }
 
 Framework::~Framework()
 {
-	SceneManager::Instance().Clear();
+	m_sceneManager.Clear();
 }
 
 int Framework::run()
@@ -28,7 +28,7 @@ int Framework::run()
 #ifdef USE_IMGUI
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
-		ImFont* jpFont = ImGui::GetIO().Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\meiryo.ttc", 20.0f, nullptr, 
+		ImFont* jpFont = ImGui::GetIO().Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\meiryo.ttc", 20.0f, nullptr,
 			ImGui::GetIO().Fonts->GetGlyphRangesJapanese());
 		ImGui::GetIO().FontDefault = jpFont;
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -104,7 +104,7 @@ void Framework::Update(float elapsedTime/*Elapsed seconds from last frame*/)
 	input.Update();
 
 	//ここでsceneのupdate()を呼ぶ！
-	SceneManager::Instance().Update(elapsedTime);
+	m_sceneManager.Update(elapsedTime);
 }
 
 void Framework::Render(float elapsedTime/*Elapsed seconds from last frame*/)
@@ -130,7 +130,7 @@ void Framework::Render(float elapsedTime/*Elapsed seconds from last frame*/)
 	_immediate_context->OMSetRenderTargets(1, &_render_target_view, _depth_stencil_view);
 
 	//ここでrender()を呼ぶ！
-	SceneManager::Instance().Render(elapsedTime);
+	m_sceneManager.Render(elapsedTime);
 #ifdef USE_IMGUI
 	ImGuiStyle& _imGuiStyle = ImGui::GetStyle();
 	/*_imGuiStyle.Colors[ImGuiCol_TitleBg] = ImVec4(0.0f, 0.0f, 0.5f, 1.0f);
@@ -139,7 +139,7 @@ void Framework::Render(float elapsedTime/*Elapsed seconds from last frame*/)
 	_imGuiStyle.Colors[ImGuiCol_BorderShadow] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 	_imGuiStyle.WindowRounding = 0.1f;
 	//ImGui::Begin("ImGUI");
-	SceneManager::Instance().ImGuiRender();
+	m_sceneManager.ImGuiRender();
 	//ImGui::End();
 #endif // USE_IMGUI
 }

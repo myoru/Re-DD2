@@ -10,6 +10,8 @@
 #include "StringConvert.h"
 #include "AllFacialSet.h"
 #include "Actions.h"
+#include "SceneManager.h"
+#include "SceneLoading.h"
 
 #define CharactersWindowRate 3.0f / 7.0f
 
@@ -27,8 +29,8 @@ void SceneTool::Initialize()
 	ID3D11Device* _device = _graphics.GetDevice();
 	ID3D11DeviceContext* _deviceContext = _graphics.GetDeviceContext();
 	using SeparateType = ScreenSeparateLine::SeparateType;
-	AllFacialSet& _allFacIns = AllFacialSet::Instance();
-	auto _allFacialSet = _allFacIns.GetAllFacialSet();
+	auto _allFacIns = AllFacialSet::GetInstance();
+	auto _allFacialSet = _allFacIns->GetAllFacialSet();
 
 	//Scene識別インデックス設定
 	Scene::SetIndex(sc_i(Scene::Index::Event));
@@ -52,7 +54,7 @@ void SceneTool::Initialize()
 
 	m_chapter = std::make_unique<Chapter>();
 
-#if 1
+#if 0
 	std::string _input_json_name = "./Data/Json/";
 	_input_json_name += "/Chapter/";
 	_input_json_name += "Test";
@@ -91,56 +93,81 @@ void SceneTool::Finalize()
 
 void SceneTool::Update(float a_elapsedTime)
 {
-	Graphics& _graphics = Graphics::Instance();	//
-	Mouse& _mouse = Input::Instance().GetMouse();	//
 	Keyboard& _keyboard = Input::Instance().GeKeyboard();
+	Graphics& _graphics = Graphics::Instance();
+	Mouse& _mouse = Input::Instance().GetMouse();
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
-	//F2を押すと最大スケールでレビュー画面で表示される
-	if (_keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
+	/*if (_keyboard.GetKeyInput(Keyboard::F3, Keyboard::DownMoment))
 	{
-		m_reviewFullScreenTestFlag = !m_reviewFullScreenTestFlag;
-		if (m_reviewFullScreenTestFlag)
+		SceneManager::Instance().ChangeScene(new SceneLoading(new SceneTool));
+	}*/
+
+	//モード切り替え
+	ModeChange();
+	//レビュー画面パラメーター更新
+	ReviewBoardUpdate();
+
+	//現在選択中のスライド更新
+	m_currentSlide = &m_chapter->GetSlides()[m_slideIndex];
+
+	//看板(m_signBoard)が一つでも登録されていれば
+	if (m_signBoards.size())
+	{
+		//更新処理を行う
+		for (int i = 0; i < m_signBoards.size(); i++)
 		{
-			//最大表示前の分割パラメーターを保存しておく
-			for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
-			{
-				m_screenSeparateLine.beforeRate[i] = m_screenSeparateLine.rate[i];
-			}
-			m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] = 0.0f;
-			m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] = 1.0f;
-		}
-		else
-		{
-			//保存していたパラメーターに戻す
-			for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
-			{
-				m_screenSeparateLine.rate[i] = m_screenSeparateLine.beforeRate[i];
-			}
+			m_signBoards.at(i)->Update(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		}
 	}
+	//キャラクター更新
+	CharactersUpdate(a_elapsedTime);
 
-	//最大スケールでレビュー画面が表示されていないなら
-	if (!m_reviewFullScreenTestFlag)
+	//矩形UIのパラメーター更新
+	for (const auto& [_, _rectUI] : m_rectUIs)
 	{
-		m_screenSeparateLine.LineMove();//分割線を動かす
-		m_reviewScreenAspectRate = m_reviewScreenNormalSize.y / m_reviewScreenNormalSize.x;//レビュー画面のアスペクト比を更新
-
-		float _lineWidth = 5.0f;  //分割線の幅(画面の大きさが 1920：1080 の時を想定した値)
-		//分割線の描画のためのパラメーター(Position,Size)の設定
-		{
-			m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)],0.0f };
-			m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)] = { _lineWidth * _graphics.GetFeelingSize(), screenSize.y };
-			m_screenSeparateLine.linePosition[sc_i(SeparateType::LeftHorizontal)] = { 0.0f,screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] };
-			m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
-				_lineWidth * _graphics.GetFeelingSize() };
-			m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + (_lineWidth / 2.0f * _graphics.GetFeelingSize()),
-				screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] };
-			m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]), _lineWidth * _graphics.GetFeelingSize() };
-		}
+		_rectUI->Update(a_elapsedTime);
 	}
 
+	//ギズモが操作されていなければ、矩形UIとマウスの当り判定チェック
+	if (!m_usingGuizmo)
+	{
+		RectUIHitCheck();
+	}
+
+	//分割線用のパラメーター更新
+	m_eventWindowRate = (1.0f - CharactersWindowRate) / 3.0f;
+	m_charactersWindowWidth = screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) * CharactersWindowRate - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f;
+	m_eventWindowWidth = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) - m_charactersWindowWidth) / 3.0f;
+	m_eventWindowDrawStartPos.x = screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
+	m_eventWindowDrawStartPos.y = screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
+	m_slideWindowHeight = screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
+
+	for (auto _action : m_currentSlide->m_actions)
+	{
+		_action->Excute(a_elapsedTime);
+	}
+}
+
+void SceneTool::ReviewBoardUpdate()
+{
+	Graphics& _graphics = Graphics::Instance();
+	using SeparateType = ScreenSeparateLine::SeparateType;
+
+	float _lineWidth = 5.0f * _graphics.GetFeelingSize();  //分割線の幅(画面の大きさが 1920：1080 の時を想定した値)
+
+	//分割線の描画のためのパラメーター(Position,Size)の設定
+	{
+		m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)],0.0f };
+		m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)] = { _lineWidth, screenSize.y };
+		m_screenSeparateLine.linePosition[sc_i(SeparateType::LeftHorizontal)] = { 0.0f,screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] };
+		m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,_lineWidth };
+
+		m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + (_lineWidth / 2.0f * _graphics.GetFeelingSize()),
+		screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] };
+		m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)] = { screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]), _lineWidth * _graphics.GetFeelingSize() };
+	}
 	//レビュー画面の描画のためのパラメーター(Position(中心),Size)の設定
 	{
 		m_reviewScreenPos.x = (screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) + (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) / 2.0f);
@@ -149,7 +176,7 @@ void SceneTool::Update(float a_elapsedTime)
 	//横のサイズから決めて縦のサイズは画面のアスペクト比を用いて計算
 	{
 		//最大スケールでレビュー画面が表示されていないなら
-		if (!m_reviewFullScreenTestFlag)
+		if (m_mode == Mode::Check || m_mode == Mode::Slideshow)
 		{
 			m_reviewScreenSize.x = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) * m_reviewOffsetScale;
 			m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
@@ -184,88 +211,71 @@ void SceneTool::Update(float a_elapsedTime)
 
 		m_blackSpaceSize.x = m_reviewScreenLeftTopPos.x - (m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f);
 		m_blackSpaceSize.y = m_reviewScreenLeftTopPos.y;
-		float _minBlackSpace = m_blackSpaceSize.x <= m_blackSpaceSize.y ? m_blackSpaceSize.x : m_blackSpaceSize.y;
-
-		m_rectUIs["LTriangle"]->position = { m_reviewScreenLeftTopPos.x - _minBlackSpace / 2.0f ,m_reviewScreenPos.y };
-		m_rectUIs["RTriangle"]->position = { m_reviewScreenRightBottomPos.x + _minBlackSpace / 2.0f,m_reviewScreenPos.y };
-		m_rectUIs["LTriangle"]->size.x = m_rectUIs["RTriangle"]->size.x = _minBlackSpace * 0.8f;
-		m_rectUIs["LTriangle"]->size.y = m_rectUIs["RTriangle"]->size.y = m_rectUIs["LTriangle"]->size.x * m_rectUIs["LTriangle"]->sprite->GetAspectRation();
-
-		m_rectUIs["DustBox"]->position = { screenSize.x, m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)].y - m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f };
-		m_rectUIs["DustBox"]->size.x = m_rectUIs["DustBox"]->size.y = m_rectUIs["LTriangle"]->size.x;
-		m_rectUIs["Add"]->position = { screenSize.x, 0.0f };
-		m_rectUIs["Add"]->size = m_rectUIs["DustBox"]->size;
 	}
+}
 
-	//看板(m_signBoard)が一つでも登録されていれば
-	if (m_signBoards.size())
+void SceneTool::CharactersUpdate(float a_elapsedTime)
+{
+	if (m_chapter && m_currentSlide->m_characters.size())
 	{
-		//更新処理を行う
-		for (int i = 0; i < m_signBoards.size(); i++)
+		for (auto& _slide : m_chapter->GetSlides())
 		{
-			m_signBoards.at(i)->Update(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
+			_slide.DeleteCharacter();
 		}
+
+		for (int i = 0, iEnd = m_currentSlide->m_characters.size(); i < iEnd; i++)
+		{
+			m_currentSlide->m_characters[i]->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
+		}
+	}
+}
+
+void SceneTool::RectUIHitCheck()
+{
+	Mouse& _mouse = Input::Instance().GetMouse();
+
+	//マウスと分割線の当り判定を行う
+	m_screenSeparateLine.MouseHitCheck();
+	if (m_rectUIs["LTriangle"]->MouseHitCheck(_mouse))
+	{
+		if (m_slideIndex > 0 && _mouse.GetButtonDown() & Mouse::BTN_LEFT)
+		{
+			m_slideIndex--;
+		}
+	}
+	if (m_rectUIs["RTriangle"]->MouseHitCheck(_mouse))
+	{
+		if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
+		{
+			m_slideIndex++;
+			if (m_chapter->GetSlides().size() == m_slideIndex)
+			{
+				m_chapter->GetSlides().emplace_back(Slide());
+			}
+		}
+	}
+	if (m_chapter->GetSlides().size() >= 2)
+	{
+		if (m_rectUIs["DustBox"]->MouseHitCheck(_mouse))
+		{
+			m_chapter->GetSlides().erase(m_chapter->GetSlides().begin() + m_slideIndex);
+			if (m_slideIndex >= m_chapter->GetSlides().size())
+			{
+				m_slideIndex = m_chapter->GetSlides().size() - 1;
+			}
+		}
+	}
+	if (m_rectUIs["Add"]->MouseHitCheck(_mouse))
+	{
+		m_chapter->GetSlides().insert(m_chapter->GetSlides().begin() + m_slideIndex + 1, Slide());
+		m_slideIndex++;
 	}
 
 	m_currentSlide = &m_chapter->GetSlides()[m_slideIndex];
+}
 
-	CharactersUpdate(a_elapsedTime);
-
-	for (const auto& [_, _rectUI] : m_rectUIs)
-	{
-		_rectUI->Update(a_elapsedTime);
-	}
-
-	//ギズモが操作されていなければ
-	if (!m_usingGuizmo)
-	{
-		//マウスと分割線の当り判定を行う
-		m_screenSeparateLine.MouseHitCheck();
-		if (m_rectUIs["LTriangle"]->MouseHitCheck(_mouse))
-		{
-			if (m_slideIndex > 0 && _mouse.GetButtonDown() & Mouse::BTN_LEFT)
-			{
-				m_slideIndex--;
-			}
-		}
-		if (m_rectUIs["RTriangle"]->MouseHitCheck(_mouse))
-		{
-			if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
-			{
-				m_slideIndex++;
-				if (m_chapter->GetSlides().size() == m_slideIndex)
-				{
-					m_chapter->GetSlides().emplace_back(Slide());
-				}
-			}
-		}
-		if (m_chapter->GetSlides().size() >= 2)
-		{
-			if (m_rectUIs["DustBox"]->MouseHitCheck(_mouse))
-			{
-				m_chapter->GetSlides().erase(m_chapter->GetSlides().begin() + m_slideIndex);
-				if (m_slideIndex >= m_chapter->GetSlides().size())
-				{
-					m_slideIndex = m_chapter->GetSlides().size() - 1;
-				}
-			}
-		}
-		if (m_rectUIs["Add"]->MouseHitCheck(_mouse))
-		{
-			m_chapter->GetSlides().insert(m_chapter->GetSlides().begin() + m_slideIndex + 1, Slide());
-			m_slideIndex++;
-		}
-
-		m_currentSlide = &m_chapter->GetSlides()[m_slideIndex];
-	}
-
-	m_eventWindowRate = (1.0f - CharactersWindowRate) / 3.0f;
-	m_charactersWindowWidth = screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) * CharactersWindowRate - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f;
-	m_eventWindowWidth = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) - m_charactersWindowWidth) / 3.0f;
-	m_eventWindowDrawStartPos.x = screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
-	m_eventWindowDrawStartPos.y = screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
-	m_slideWindowHeight = screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
-
+void SceneTool::LineUpdate()
+{
 	if (m_lines.size())
 	{
 		int _i = 0;
@@ -290,22 +300,6 @@ void SceneTool::Update(float a_elapsedTime)
 				}
 				_i++;
 			}
-		}
-	}
-}
-
-void SceneTool::CharactersUpdate(float a_elapsedTime)
-{
-	if (m_chapter && m_currentSlide->m_characters.size())
-	{
-		for (auto& _slide : m_chapter->GetSlides())
-		{
-			_slide.DeleteCharacter();
-		}
-
-		for (int i = 0, iEnd = m_currentSlide->m_characters.size(); i < iEnd; i++)
-		{
-			m_currentSlide->m_characters[i]->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		}
 	}
 }
@@ -337,36 +331,19 @@ void SceneTool::Render(float elapsedTime)
 
 		//キャラクター描画
 		{
-			/*for (int i = 0, iEnd = m_currentSlide->m_characters.size(); i < iEnd; i++)
-			{
-				int _facialIndex = m_currentSlide->m_characters.at(i)->facialIndex;
-				m_currentSlide->m_characters[i]->ToolRender(_facialIndex, BasePoint::Center);
-			}*/
-
 			m_currentSlide->Render(m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		}
 
 		//看板(m_signBoard)が一つでも登録されていれば
 		if (m_signBoards.size())
 		{
-			////描画(背景のボード)処理を行う
-			//for (int i = 0; i < m_signBoards.size(); i++)
-			//{
-			//	m_signBoards.at(i)->BoardRender();
-			//}
-			////描画(テキスト)処理を行う
-			//for (int i = 0; i < m_signBoards.size(); i++)
-			//{
-			//	m_signBoards.at(i)->TextRender();
-			//}
 			for (int i = 0; i < m_signBoards.size(); i++)
 			{
-				m_signBoards.at(i)->ToolRender(m_reviewFullScreenTestFlag);
-				//m_signBoards.at(i)->BoardRender();
+				m_signBoards.at(i)->BoardRender();
 			}
 			for (int i = 0; i < m_signBoards.size(); i++)
 			{
-				//m_signBoards.at(i)->TextRender();
+				m_signBoards.at(i)->TextRender(m_currentSlide->m_inputBuffer, m_reviewFullScreenTestFlag);
 			}
 		}
 
@@ -513,9 +490,9 @@ void SceneTool::ImGuiOperationWindow()
 
 		auto& _selectSlide = m_chapter->GetSlides()[m_slideIndex];
 
-		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.5f, 0.2f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.2f, 0.9f, 0.2f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.2f, 0.9f, 0.2f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.5f, 0.2f, 0.5f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.2f, 0.9f, 0.2f, 0.7f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.2f, 0.9f, 0.2f, 0.5f)); //色変更
 		if (ImGui::CollapsingHeader("Layer", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			for (int i = _selectSlide.m_characters.size() - 1; i >= 0; i--)
@@ -612,8 +589,16 @@ void SceneTool::ImGuiOperationWindow()
 
 		ImGui::TreePop();
 	}
-
 	ImGui::Separator();
+
+	int _i = 0;
+	for (auto _action : m_currentSlide->m_actions)
+	{
+		std::string _label = "##" + std::to_string(_i);
+		ImGui::InputInt(_label.c_str(), &_action->m_data.index); ImGui::SameLine();
+		ImGui::Checkbox(_label.c_str(), &_action->m_data.isEnd);
+	}
+
 	ImGui::End();
 	ImGui::PopStyleColor(2);
 }
@@ -691,10 +676,13 @@ void SceneTool::ImGuiAssetsWindow(float a_buttonWidth)
 				switch (m_currentSlide->m_actions.size())
 				{
 				case 0:
-					m_currentSlide->m_actions.emplace_back(std::make_shared<Vibe>(Action::Data{}));
+					m_currentSlide->m_actions.emplace_back(std::make_shared<Vibe>(Action::Data{ "Vibe" }));
 					break;
 				case 1:
-					m_currentSlide->m_actions.emplace_back(std::make_shared<MusicStart>(Action::Data{}));
+					m_currentSlide->m_actions.emplace_back(std::make_shared<MusicStart>(Action::Data{ "MusicStart",0 }));
+					break;
+				case 2:
+					m_currentSlide->m_actions.emplace_back(std::make_shared<MusicStop>(Action::Data{ "MusicStop",0 }));
 					break;
 				}
 			}
@@ -737,19 +725,20 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 				ImGui::Image(m_signBoards.at(i)->GetBoardSprite()->GetShaderResource(), ImVec2(_imageDrawSize.x, _imageDrawSize.y));
 				ImGui::Separator();
 
+				strncpy_s(m_currentSlide->m_inputBuffer, sizeof(m_currentSlide->m_inputBuffer), m_currentSlide->m_text.c_str(), _TRUNCATE);
+				/*std::strncpy(m_currentSlide->m_inputBuffer, m_currentSlide->m_text.c_str(), sizeof(m_currentSlide->m_inputBuffer) - 1);
+				m_currentSlide->m_inputBuffer[sizeof(m_currentSlide->m_inputBuffer) - 1] = '\0';*/
+
 				ImGui::Text("Text");
 				ImGui::InputTextMultiline(("##" + std::to_string(i)).c_str(),  // ラベル
-					m_signBoards.at(i)->m_inputBuffer,           // テキストバッファ
-					IM_ARRAYSIZE(m_signBoards.at(i)->m_inputBuffer), // バッファサイズ
+					m_currentSlide->m_inputBuffer,           // テキストバッファ
+					IM_ARRAYSIZE(m_currentSlide->m_inputBuffer), // バッファサイズ
 					ImVec2(ImGui::GetWindowSize().x * 0.75f, ImGui::GetWindowSize().y * 0.05f));
 
 				wchar_t _wideBuffer[256] = {};
-				MultiByteToWideChar(CP_UTF8, 0, m_signBoards.at(i)->m_inputBuffer, -1, _wideBuffer, 256);
+				MultiByteToWideChar(CP_UTF8, 0, m_currentSlide->m_inputBuffer, -1, _wideBuffer, 256);
 
 				m_currentSlide->m_text = ConvertWideToUtf8(_wideBuffer);
-
-				m_signBoards.at(i)->jElements.wText = _wideBuffer;
-				m_signBoards.at(i)->jElements.text = m_currentSlide->m_text = WideToUtf8(m_signBoards.at(i)->jElements.wText);
 
 				//m_signBoards.at(i)->jElements.text = m_currentSlide->m_text;
 
@@ -807,7 +796,6 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 			//絶対パスを相対パス化
 			auto _jsonFilePath = std::filesystem::relative(_wideBuffer);
 			m_signBoards.emplace_back(std::make_unique<SignBoard>(_device, _deviceContext, _jsonFilePath.string()));
-			m_signBoards.at(m_signBoards.size() - 1)->jElements.text = "こんばんは\nこんばんは\nおはよう";
 		}
 	}
 	//m_textWindowがnullptrじゃなかったら
@@ -830,8 +818,8 @@ void SceneTool::ImGuiAllCharactersWindow(float a_buttonWidth)
 	Graphics& _graphics = Graphics::Instance();
 	ID3D11Device* _device = _graphics.GetDevice();
 	ID3D11DeviceContext* _deviceContext = _graphics.GetDeviceContext();
-	AllFacialSet& _allFacIns = AllFacialSet::Instance();
-	auto _allFacialSet = _allFacIns.GetAllFacialSet();
+	auto _allFacIns = AllFacialSet::GetInstance();
+	auto _allFacialSet = _allFacIns->GetAllFacialSet();
 
 	std::vector<std::string> _characterKeys{};
 	std::vector<const char*> _cstrItems;
@@ -850,7 +838,7 @@ void SceneTool::ImGuiAllCharactersWindow(float a_buttonWidth)
 		}
 		ImGui::Combo("Character", &_currentItem, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
 
-		Sprite* _characterSprite = _allFacIns.GetFacialSet(_currentItem)->GetFacial(0).get();
+		Sprite* _characterSprite = _allFacIns->GetFacialSet(_currentItem)->GetFacial(0).get();
 		ImVec2 _imageSize = { a_buttonWidth, a_buttonWidth * _characterSprite->GetAspectRation() };
 		if (_imageSize.y > _imageLimitHeight)
 		{
@@ -1166,6 +1154,66 @@ void SceneTool::ImGuizmoRender()
 void SceneTool::OnSizeChange()
 {
 	Graphics& _graphics = Graphics::Instance();
+}
+
+void SceneTool::ModeChange()
+{
+	Keyboard& _keyboard = Input::Instance().GeKeyboard();
+	Graphics& _graphics = Graphics::Instance();
+	Mouse& _mouse = Input::Instance().GetMouse();
+
+	using SeparateType = ScreenSeparateLine::SeparateType;
+
+	switch (m_mode)
+	{
+	case SceneTool::Mode::Edit:
+		if (_keyboard.GetKeyInput(Keyboard::F5, Keyboard::DownMoment))
+		{
+			m_mode = Mode::Slideshow;
+			//CTRLキーが押されていたら、最初のスライドから再生
+			if (_keyboard.GetKeyInput(Keyboard::CTRL, Keyboard::Down))
+			{
+
+			}
+			//押されていなかったら、現在のスライドから再生
+			else
+			{
+
+			}
+		}
+		//F2を押すと最大スケールでレビュー画面で表示される
+		else if (_keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
+		{
+			m_mode = Mode::Check;
+			m_reviewFullScreenTestFlag = !m_reviewFullScreenTestFlag;
+			if (m_reviewFullScreenTestFlag)
+			{
+				//最大表示前の分割パラメーターを保存しておく
+				for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
+				{
+					m_screenSeparateLine.beforeRate[i] = m_screenSeparateLine.rate[i];
+				}
+				m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] = 0.0f;
+				m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] = 1.0f;
+			}
+			else
+			{
+				//保存していたパラメーターに戻す
+				for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
+				{
+					m_screenSeparateLine.rate[i] = m_screenSeparateLine.beforeRate[i];
+				}
+			}
+		}
+		break;
+	default:
+		if (_keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment))
+		{
+			m_mode = Mode::Edit;
+		}
+		break;
+	}
+
 }
 
 

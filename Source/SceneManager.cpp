@@ -3,9 +3,12 @@
 #include "Input.h"
 #include "Graphics.h"
 
-SceneManager::SceneManager()
-	:m_allFacialSet()
+bool SceneManager::InitializeElements()
 {
+	AllFacialSet::GetInstance()->Initialize();
+	AllBGM::GetInstance()->Initialize();
+
+	return true;
 }
 
 //XVˆ—

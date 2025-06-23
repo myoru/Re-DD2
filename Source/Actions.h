@@ -2,29 +2,34 @@
 #include <vector>
 #include <memory>
 #include "Action.h"
+#include "AllBGM.h"
 
-static void MakeUpAction(std::vector<std::shared_ptr<Action>>& a_actions, Action::Data a_actionData)
-{
-	const std::string _name = a_actionData.name;
-	if (_name == "Vibe")
-	{
-		a_actions.emplace_back(std::make_shared<Action>(a_actionData));
-	}
-	if (_name == "Vibe")
-	{
-		a_actions.emplace_back(std::make_shared<Action>(a_actionData));
-	}
-}
+//static void MakeUpAction(std::vector<std::shared_ptr<Action>>& a_actions, Action::Data a_actionData)
+//{
+//	const std::string _name = a_actionData.name;
+//	if (_name == "Vibe")
+//	{
+//		a_actions.emplace_back(std::make_shared<Action>(a_actionData));
+//	}
+//	if (_name == "Vibe")
+//	{
+//		a_actions.emplace_back(std::make_shared<Action>(a_actionData));
+//	}
+//}
 
 class Vibe : public Action
 {
 public:
 	Vibe() = default;
-	Vibe(Action::Data a_data) :Action(a_data) {}
+	Vibe(Action::Data a_data) :Action(a_data)
+	{
+
+	}
 	~Vibe() {}
 
 	void Excute(float a_elapsedTime)override
 	{
+		m_data.timer += a_elapsedTime;
 		if (m_data.isEnd == true)return;
 		m_data.index++;
 		if (m_data.index >= 500)
@@ -39,6 +44,8 @@ public:
 		Action::serialize(archive);
 	}
 };
+CEREAL_REGISTER_TYPE(Vibe)
+CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, Vibe)
 
 class MusicStart : public Action
 {
@@ -50,9 +57,35 @@ public:
 	void Excute(float a_elapsedTime)override
 	{
 		if (m_data.isEnd == true)return;
-		m_data.index--;
-		if (m_data.index <= -500)
+		AllBGM::GetInstance()->GetBGM(m_data.index)->Play(true);
+		m_data.isEnd = true;
+	}
+
+	template<class T>
+	void serialize(T& archive)
+	{
+		Action::serialize(archive);
+	}
+};
+CEREAL_REGISTER_TYPE(MusicStart)
+CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, MusicStart)
+
+class MusicStop : public Action
+{
+public:
+	MusicStop() = default;
+	MusicStop(Action::Data a_data) :Action(a_data) {}
+	~MusicStop() {}
+
+	void Excute(float a_elapsedTime)override
+	{
+		if (m_data.isEnd == true)return;
+		static float _volume = 1.0f;
+		_volume -= a_elapsedTime;
+		AllBGM::GetInstance()->GetBGM(m_data.index)->Volume(_volume);
+		if (_volume < 0.0f)
 		{
+			AllBGM::GetInstance()->GetBGM(m_data.index)->Stop(true);
 			m_data.isEnd = true;
 		}
 	}
@@ -63,13 +96,5 @@ public:
 		Action::serialize(archive);
 	}
 };
-
-// Register DerivedClassOne
-CEREAL_REGISTER_TYPE(Vibe);
-CEREAL_REGISTER_TYPE(MusicStart);
-
-// Note that there is no need to register the base class, only derived classes
-//  However, since we did not use cereal::base_class, we need to clarify
-//  the relationship (more on this later)
-CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, Vibe)
-CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, MusicStart)
+CEREAL_REGISTER_TYPE(MusicStop)
+CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, MusicStop)

@@ -9,7 +9,7 @@
 class SceneTool : public Scene
 {
 public:
-	SceneTool() {};
+	SceneTool(){};
 	~SceneTool() override {}
 
 	//初期化
@@ -18,7 +18,11 @@ public:
 	void Finalize()override;
 	//更新処理
 	void Update(float elapsedTime)override;
-	void CharactersUpdate(float a_elapsedTime);
+	void ModeChange(); //モード切り替え関数
+	void ReviewBoardUpdate();
+	void CharactersUpdate(float a_elapsedTime); //キャラクター更新処理
+	void RectUIHitCheck(); //キャラクター更新処理
+	void LineUpdate();
 	//描画処理
 	void Render(float elapsedTime)override;
 #ifdef USE_IMGUI
@@ -64,17 +68,17 @@ private:
 	};
 	ScreenSeparateLine m_screenSeparateLine;
 
-	//ScreenView(どのように描画されるか確認できる)
+	//ScreenView(どのように描画されるか確認できるエリア)
 	DirectX::XMFLOAT2 m_reviewScreenPos = {}; //position(Center)
-	DirectX::XMFLOAT2 m_reviewScreenSize = {}; //サイズ
 	DirectX::XMFLOAT2 m_reviewScreenLeftTopPos = {}; //position(LeftTop)
 	DirectX::XMFLOAT2 m_reviewScreenRightBottomPos = {}; //position(RightBottom)
+	DirectX::XMFLOAT2 m_reviewScreenSize = {}; //サイズ
 	DirectX::XMFLOAT4 m_reviewScreenColor = { 1.0f,1.0f,1.0f,1.0f }; //色
 	DirectX::XMFLOAT2 m_reviewScreenNormalSize = { 16.0f,9.0f }; //縦横比
 	float m_reviewScreenAspectRate = 0.0f; //アスペクト比
 	bool m_reviewFullScreenTestFlag = false; //フルスクで表示するかのフラグ
 
-	//ImGuiウィンドウサイズ
+	//ImGuiウィンドウ関連の変数
 	float m_charactersWindowWidth = 0.0f; //CharacterWindowの横幅
 	float m_eventWindowRate = 0.0f; //EventWindow1つ辺りの横幅((0.0f ~ 1.0f) / 3)
 	float m_eventWindowWidth = 0.0f; //EventWindow1つ辺りの横幅
@@ -87,14 +91,17 @@ private:
 	std::vector<std::unique_ptr<SignBoard>> m_signBoards;
 
 	//チャプター用ポインタ変数
-	std::unique_ptr<Chapter> m_chapter;
+	std::unique_ptr<Chapter> m_chapter; //Chapterポインタ
+
+	//スライド用変数
+	Slide* m_currentSlide = nullptr; //現在のスライド
 	int m_slideIndex = 0; //何枚目のスライドを選択しているかの変数(0なら1枚目)
-	Slide* m_currentSlide;
 
 	//Guizmo用変数
 	bool m_usingGuizmo = false;	//Guizmo使用中かのフラグ
 	int m_guizmoType = 0; //Guizmoの操作タイプ(移動 or 拡大・縮小)
 
+	//グリッド線用の変数
 	std::vector<float> m_lines; //線の配列
 	float lineNormalizeWallDistance = 0.1f; //0.0f ~ 1.0f
 	float lineNormalizeDistance = 0.1f;  //0.0f ~ 1.0f
@@ -106,4 +113,12 @@ private:
 		White,
 		Number,
 	};
+
+	enum class Mode
+	{
+		Edit, //編集
+		Check, //確認
+		Slideshow, //スライドショー
+	};
+	Mode m_mode = Mode::Edit; //現在のモード
 };

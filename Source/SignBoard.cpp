@@ -103,21 +103,10 @@ void SignBoard::BoardRender()
 	m_boardSpr->Render(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
 }
 
-void SignBoard::TextRender(FXMVECTOR a_textColor)
+void SignBoard::TextRender(char* a_textBuffer, bool a_fullscreen, FXMVECTOR a_textColor)
 {
-	m_textRenderer->Begin();
-	XMFLOAT2 _textDrawableAreaLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
-	m_textRenderer->Render(jElements.text, jElements.textDrawStartPosition, _textDrawableAreaLeftTopPos, jElements.textDrawableAreaSize,
-		static_cast<TextRenderer::TextAlignment>(jElements.textAlignment), jElements.lineSpace, a_textColor, jElements.textScale);
-	m_textRenderer->End();
-}
-
-void SignBoard::ToolRender(bool a_fullscreen, FXMVECTOR a_textColor)
-{
-	m_boardSpr->Render(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
-
 	wchar_t _wideBuffer[256] = {};
-	MultiByteToWideChar(CP_UTF8, 0, m_inputBuffer, -1, _wideBuffer, 256);
+	MultiByteToWideChar(CP_UTF8, 0, a_textBuffer, -1, _wideBuffer, 256);
 
 	m_textRenderer->Begin();
 	XMFLOAT2 _textDrawableAreaLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
@@ -126,16 +115,30 @@ void SignBoard::ToolRender(bool a_fullscreen, FXMVECTOR a_textColor)
 	m_textRenderer->End();
 }
 
-void SignBoard::ToolRender2(bool a_fullscreen, FXMVECTOR a_textColor)
+void SignBoard::ToolRender(bool a_fullscreen, FXMVECTOR a_textColor)
 {
-	m_boardSpr->Render(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
+	/*m_boardSpr->Render(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
+
+	wchar_t _wideBuffer[256] = {};
+	MultiByteToWideChar(CP_UTF8, 0, m_inputBuffer, -1, _wideBuffer, 256);
 
 	m_textRenderer->Begin();
 	XMFLOAT2 _textDrawableAreaLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
-	m_textRenderer->ToolRender2(jElements.wText, jElements.textDrawStartPosition, _textDrawableAreaLeftTopPos, jElements.textDrawableAreaSize,
+	m_textRenderer->ToolRender(_wideBuffer, jElements.textDrawStartPosition, _textDrawableAreaLeftTopPos, jElements.textDrawableAreaSize,
 		static_cast<TextRenderer::TextAlignment>(jElements.textAlignment), jElements.lineSpace, 0.0f, a_textColor, jElements.textScale, a_fullscreen);
-	m_textRenderer->End();
+	m_textRenderer->End();*/
 }
+
+//void SignBoard::ToolRender2(bool a_fullscreen, FXMVECTOR a_textColor)
+//{
+//	m_boardSpr->Render(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
+//
+//	m_textRenderer->Begin();
+//	XMFLOAT2 _textDrawableAreaLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
+//	m_textRenderer->ToolRender2(jElements.wText, jElements.textDrawStartPosition, _textDrawableAreaLeftTopPos, jElements.textDrawableAreaSize,
+//		static_cast<TextRenderer::TextAlignment>(jElements.textAlignment), jElements.lineSpace, 0.0f, a_textColor, jElements.textScale, a_fullscreen);
+//	m_textRenderer->End();
+//}
 
 #ifdef USE_IMGUI
 

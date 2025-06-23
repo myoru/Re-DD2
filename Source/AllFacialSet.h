@@ -1,13 +1,14 @@
 #pragma once
 #include "FacialSet.h"
+#include "Singleton.h"
 
-class AllFacialSet
+class AllFacialSet : public Singleton<AllFacialSet>
 {
 public:
-	AllFacialSet();
-	~AllFacialSet(){}
+	AllFacialSet() :Singleton() {}
+	~AllFacialSet()override {}
 
-	static AllFacialSet& Instance() { return *instance; }
+	bool InitializeElements()override;
 
 	std::vector <std::pair<std::string, std::shared_ptr<FacialSet>>> GetAllFacialSet() { return allFacialSet; }
 
@@ -15,6 +16,5 @@ public:
 	std::shared_ptr<FacialSet> GetFacialSet(int a_keyIndex);
 	std::vector<std::string> GetKeys();
 private:
-	static AllFacialSet* instance;
 	std::vector <std::pair<std::string, std::shared_ptr<FacialSet>>> allFacialSet;
 };

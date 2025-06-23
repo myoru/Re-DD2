@@ -58,6 +58,11 @@ public:
 	static const KeyboardButton CTRL = (1ULL << 39);
 	static const KeyboardButton F1 = (1ULL << 40);
 	static const KeyboardButton F2 = (1ULL << 41);
+	static const KeyboardButton F3 = (1ULL << 42);
+	static const KeyboardButton F4 = (1ULL << 43);
+	static const KeyboardButton F5 = (1ULL << 44);
+	static const KeyboardButton F6 = (1ULL << 45);
+	static const KeyboardButton F7 = (1ULL << 46);
 
 public:
 	Keyboard() {}

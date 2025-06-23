@@ -9,9 +9,9 @@ public:
 	struct Data
 	{
 		std::string name = {};
+		int index = -1;
 		float timer = 0.0f;
 		float power = 0.0f;
-		int index = -1;
 		bool isEnd = false;
 
 		/*template<class T>
@@ -42,10 +42,8 @@ public:
 		archive
 		(
 			CEREAL_NVP(m_data.name),
-			CEREAL_NVP(m_data.timer),
 			CEREAL_NVP(m_data.power),
-			CEREAL_NVP(m_data.index),
-			CEREAL_NVP(m_data.isEnd)
+			CEREAL_NVP(m_data.index)
 		);
 	}
 };

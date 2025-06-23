@@ -10,6 +10,7 @@
 #include "Graphics.h"
 #include "Input.h"
 #include "ImGuiPack.h"
+#include "SceneManager.h"
 #include "AllFacialSet.h"
 
 #ifdef USE_IMGUI
@@ -26,6 +27,8 @@ public:
 	Graphics graphics;
 	Input input;
 	high_resolution_timer tictoc;
+
+	SceneManager m_sceneManager;
 
 	Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter;
 
@@ -67,14 +70,14 @@ public:
 			break;
 		case WM_CREATE:
 			break;
-		case WM_KEYDOWN://ここの処理でESCを押すとウィンドウが落ちる
-//#if _DEBUG
-			if (wparam == VK_ESCAPE)
-			{
-				PostMessage(hwnd, WM_CLOSE, 0, 0);
-			}
-			break;
-//#endif
+//		case WM_KEYDOWN://ここの処理でESCを押すとウィンドウが落ちる
+////#if _DEBUG
+//			if (wparam == VK_ESCAPE)
+//			{
+//				PostMessage(hwnd, WM_CLOSE, 0, 0);
+//			}
+//			break;
+////#endif
 		case WM_MOUSEWHEEL:
 			Input::Instance().GetMouse().SetWheel(GET_WHEEL_DELTA_WPARAM(wparam));
 			break;

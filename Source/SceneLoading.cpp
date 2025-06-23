@@ -63,7 +63,8 @@ void SceneLoading::Update(float elapsedTime)
 	}
 
 	//次のシーンの準備が完了したらシーンを切り替える
-	if (m_nextScene->IsReady())SceneManager::Instance().ChangeScene(m_nextScene);
+	if (m_nextScene->IsReady())
+		SceneManager::GetInstance()->ChangeScene(m_nextScene);
 }
 
 //描画処理
@@ -97,6 +98,8 @@ void SceneLoading::LoadingThread(SceneLoading* scene)
 {
 	//COM関連の初期化でスレッド毎に呼ぶ必要がある
 	CoInitialize(nullptr);
+
+	SceneManager::GetInstance()->Initialize();
 
 	//次のシーンの初期化を行う
 	scene->m_nextScene->Initialize();

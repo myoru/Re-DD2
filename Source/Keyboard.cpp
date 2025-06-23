@@ -37,6 +37,11 @@ void Keyboard::Update()
     if (GetAsyncKeyState(VK_RIGHT) & 0x8000)_new_input_key |= RIGHT;
     if (GetAsyncKeyState(VK_F1) & 0x8000)_new_input_key |= F1;
     if (GetAsyncKeyState(VK_F2) & 0x8000)_new_input_key |= F2;
+    if (GetAsyncKeyState(VK_F3) & 0x8000)_new_input_key |= F3;
+    if (GetAsyncKeyState(VK_F4) & 0x8000)_new_input_key |= F4;
+    if (GetAsyncKeyState(VK_F5) & 0x8000)_new_input_key |= F5;
+    if (GetAsyncKeyState(VK_F6) & 0x8000)_new_input_key |= F6;
+    if (GetAsyncKeyState(VK_F7) & 0x8000)_new_input_key |= F7;
     if (GetAsyncKeyState('1') & 0x8000)_new_input_key |= Key1;
     if (GetAsyncKeyState('2') & 0x8000)_new_input_key |= Key2;
     if (GetAsyncKeyState('3') & 0x8000)_new_input_key |= Key3;

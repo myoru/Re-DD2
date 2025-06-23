@@ -23,6 +23,7 @@ public:
 			doubleClickTimer = 0.0f;
 		}
 	}
+
 	void Render(DirectX::XMFLOAT4 a_color = { 1.0f,1.0f,1.0f,1.0f })
 	{
 		sprite->Render(sprite->GetBasePoint(), position, size, 0.0f, a_color);

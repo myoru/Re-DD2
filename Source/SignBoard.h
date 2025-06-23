@@ -17,9 +17,9 @@ public:
 
 	void Update(float a_elapsedTime, DirectX::XMFLOAT2 a_screenLeftTopPosition = { 0.0f,0.0f }, DirectX::XMFLOAT2 a_screenSize = { -1.0f,-1.0f });
 	void BoardRender();
-	void TextRender(FXMVECTOR a_textColor = Colors::Red);
+	void TextRender(char* a_textBuffer, bool a_fullscreen,FXMVECTOR a_textColor = Colors::Red);
 	void ToolRender(bool a_fullscreen,FXMVECTOR a_textColor = Colors::White);
-	void ToolRender2(bool a_fullscreen,FXMVECTOR a_textColor = Colors::White);
+	//void ToolRender2(bool a_fullscreen,FXMVECTOR a_textColor = Colors::White);
 
 	Sprite* GetBoardSprite() { return m_boardSpr.get(); }
 	
@@ -31,10 +31,7 @@ public:
 	{
 		std::string boardFilePath{};							//ボードに使う画像のパス(相対)
 		std::string fontFilePath{};								//テキストに使うフォントのパス(相対)
-		char jsonFileName[256]{};								//出力するJsonファイルの名前
-
-		std::string text{};										//描画する文字列
-		std::wstring wText{};										//描画する文字列
+	
 		DirectX::XMFLOAT2 boardPosition{};						//スクリーン空間
 		DirectX::XMFLOAT2 boardLocalPosition{ 0.5f,0.5f };		//スクリーンサイズに対して何割の位置であるか(X成分が0.7fなら横軸の位置は画面の横幅を7:3で分割する位置)
 		DirectX::XMFLOAT2 boardSize{};							//スクリーン空間
@@ -76,6 +73,4 @@ private:
 	std::unique_ptr<Sprite> m_whiteSpr;
 	std::unique_ptr<Sprite> m_boardSpr;
 	std::unique_ptr<TextRenderer> m_textRenderer;
-public:
-	char m_inputBuffer[256] = {};
 };

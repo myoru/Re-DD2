@@ -1,5 +1,7 @@
 #pragma once
+#include <iostream>
 #include <string>
+#include <cstring>
 #include <WinNls.h>
 
 //std::string ---> std::wstring
@@ -81,4 +83,13 @@ static std::string WideToUTF8(const wchar_t* wideStr)
 	WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, &utf8Str[0], sizeNeeded, nullptr, nullptr);
 
 	return utf8Str;
+}
+
+static void CopyStringToBuffer(const std::string& a_src, char* a_dst)
+{
+	size_t _size = sizeof(a_dst);
+	if (_size == 0) return;
+
+	strncpy_s(a_dst, _size, a_src.c_str(), _TRUNCATE);
+	//a_dst[_size - 1] = '\0';
 }

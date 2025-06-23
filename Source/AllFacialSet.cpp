@@ -4,21 +4,14 @@
 #include "ReimuFacials.h"
 #include "MarisaFacials.h"
 
-AllFacialSet* AllFacialSet::instance = nullptr;
-
-AllFacialSet::AllFacialSet()
+bool AllFacialSet::InitializeElements()
 {
 	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"óEå≥ó≤éu"), std::make_shared<TestFacials1>());
 	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"óEå≥ëÂãP"), std::make_shared<TestFacials2>());
 	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"Ç‰Ç¡Ç≠ÇËóÏñ≤"), std::make_shared<ReimuFacials>());
 	allFacialSet.emplace_back(reinterpret_cast<const char*>(u8"Ç‰Ç¡Ç≠ÇËñÇóùçπ"), std::make_shared<MarisaFacials>());
 
-	/*allFacialSet.emplace_back("Test1", std::make_shared<TestFacials1>());
-	allFacialSet.emplace_back("Test2", std::make_shared<TestFacials2>());
-	allFacialSet.emplace_back("Reimu", std::make_shared<ReimuFacials>());
-	allFacialSet.emplace_back("Marisa", std::make_shared<MarisaFacials>());*/
-
-	instance = this;
+	return true;
 }
 
 std::shared_ptr<FacialSet> AllFacialSet::GetFacialSet(std::string a_targetKey)

@@ -432,7 +432,7 @@ void Graphics::OnSizeChanged(HWND hWnd, UINT64 width, UINT height)
 
 		// Release all objects that hold shader resource views here.
 
-		SceneManager::Instance().OnSizeChange();
+		SceneManager::GetInstance()->OnSizeChange();
 
 
 #ifdef ENABLE_DIRECT2D

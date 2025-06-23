@@ -62,6 +62,7 @@ public:
 	int m_characterIndex = 0;
 	std::shared_ptr<Sprite> m_backSpr;
 	std::string m_backSprFilePath{};
+	char m_inputBuffer[256] = {};
 	std::string m_text;
 	float m_mainTimer{};
 	std::vector<std::shared_ptr<Action>> m_actions;
