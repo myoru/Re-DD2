@@ -45,7 +45,7 @@ SignBoard::~SignBoard()
 {
 }
 
-void SignBoard::Update(float a_elapsedTime, DirectX::XMFLOAT2 a_screenLeftTopPosition, DirectX::XMFLOAT2 a_screenSize)
+void SignBoard::Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition, DirectX::XMFLOAT2 a_screenSize)
 {
 	Graphics& _graphics = Graphics::Instance();
 	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
@@ -96,6 +96,10 @@ void SignBoard::Update(float a_elapsedTime, DirectX::XMFLOAT2 a_screenLeftTopPos
 
 		jElements.lineSpace = jElements.textDrawableAreaSize.y * jElements.localLineSpace;
 	}
+	wchar_t _wideBuffer[256] = {};
+	MultiByteToWideChar(CP_UTF8, 0, a_textBuffer, -1, _wideBuffer, 256);
+
+	m_textRenderer->Update(_wideBuffer, a_drawableTextLen);
 }
 
 void SignBoard::BoardRender()
@@ -103,14 +107,11 @@ void SignBoard::BoardRender()
 	m_boardSpr->Render(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
 }
 
-void SignBoard::TextRender(char* a_textBuffer, bool a_fullscreen, FXMVECTOR a_textColor)
+void SignBoard::TextRender(bool a_fullscreen, FXMVECTOR a_textColor)
 {
-	wchar_t _wideBuffer[256] = {};
-	MultiByteToWideChar(CP_UTF8, 0, a_textBuffer, -1, _wideBuffer, 256);
-
 	m_textRenderer->Begin();
 	XMFLOAT2 _textDrawableAreaLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
-	m_textRenderer->ToolRender(_wideBuffer, jElements.textDrawStartPosition, _textDrawableAreaLeftTopPos, jElements.textDrawableAreaSize,
+	m_textRenderer->ToolRender(jElements.textDrawStartPosition, _textDrawableAreaLeftTopPos, jElements.textDrawableAreaSize,
 		static_cast<TextRenderer::TextAlignment>(jElements.textAlignment), jElements.lineSpace, 0.0f, a_textColor, jElements.textScale, a_fullscreen);
 	m_textRenderer->End();
 }

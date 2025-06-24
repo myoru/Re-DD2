@@ -1,5 +1,6 @@
 #include "TextRenderer.h"
 #include "StringConvert.h"
+#include <algorithm>
 
 TextRenderer::TextRenderer(ID3D11Device* a_device, ID3D11DeviceContext* a_deviceContext, const wchar_t* a_fileName)
 {
@@ -8,8 +9,18 @@ TextRenderer::TextRenderer(ID3D11Device* a_device, ID3D11DeviceContext* a_device
 	DirectX::XMStoreFloat2(&m_fontSize, m_spriteFont->MeasureString(L"◇"));
 }
 
-void TextRenderer::Update(float a_elapsedTime)
+bool TextRenderer::Update(const wchar_t* a_text, int a_drawTextLen)
 {
+	m_textLen = std::wcslen(a_text);		//何文字か
+	m_drawText = a_text;	//const wchar_t*をwstringに格納する
+	m_textLen = m_drawText.length(); //何文字か
+	m_drawableTextLen = a_drawTextLen;
+
+	if (m_textLen < m_drawableTextLen)
+	{
+		return true;
+	}
+	return false;
 }
 
 void TextRenderer::Begin()
@@ -17,24 +28,22 @@ void TextRenderer::Begin()
 	m_spriteBatch->Begin();
 }
 
-void TextRenderer::Render(std::string a_text, XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize, TextAlignment a_textAlignment, float a_lineSpace, FXMVECTOR a_textColor, float a_scale)
+void TextRenderer::Render(XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize, TextAlignment a_textAlignment, float a_lineSpace, FXMVECTOR a_textColor, float a_scale)
 {
-	std::wstring _text = ShiftJisToWstring(a_text);	//const wchar_t*をwstringに格納する
-	int _textLen = _text.length();	//何文字か
 	std::vector<std::wstring> _textParts;	//改行が行われるごとにこのコンテナに追加していく(改行無しの場合でも最低でも要素が1つは存在する設計)
 
 	//もし文字が入力されていたら
-	if (_textLen)
+	if (m_textLen)
 	{
 		std::wstring _textPart = {};	//改行されるまでの文字列をここにどんどん格納していく
 		DirectX::XMFLOAT2 _textPartSize{};	//文字を描画した際のサイズを格納する(スクリーン空間)
-		for (int i = 0; i < _textLen; i++)
+		for (int i = 0; i < m_textLen; i++)
 		{
 			//m_endsInNewlineの初期化
 			m_endIsNewline = false;
 			//コピー(次の文字を格納しても描画可能範囲から溢れないかをチェックするためにコピーする)
 			std::wstring _bummyTextPart = _textPart;
-			_bummyTextPart += _text.at(i);	//継続条件が[i < _textLen]であるため問題なく指定要素を取得できる
+			_bummyTextPart += m_drawText.at(i);	//継続条件が[i < _textLen]であるため問題なく指定要素を取得できる
 			//文字列の長さを取得
 			DirectX::XMStoreFloat2(&_textPartSize, m_spriteFont->MeasureString(_bummyTextPart.c_str()));
 			//もし、描画可能範囲から溢れていたら
@@ -45,10 +54,10 @@ void TextRenderer::Render(std::string a_text, XMFLOAT2 a_drawStartPosition, XMFL
 				//クリア
 				_textPart = {};
 				//文字列を格納
-				_textPart += _text.at(i);
+				_textPart += m_drawText.at(i);
 			}
 			//改行の入力がされていたら
-			else if (_text.at(i) == L'\n')
+			else if (m_drawText.at(i) == L'\n')
 			{
 				//改行入力(\n)は格納し無くてよいので、_textPart += str.at(i)を行わない
 				//コンテナに改行されるまでの文字列データを格納
@@ -60,11 +69,11 @@ void TextRenderer::Render(std::string a_text, XMFLOAT2 a_drawStartPosition, XMFL
 			else
 			{
 				//文字列を格納
-				_textPart += _text.at(i);
+				_textPart += m_drawText.at(i);
 			}
 			if (a_drawStartPosition.y - a_drawableAreaLeftTopPosition.y + (_textParts.size() + 1) * (m_fontSize.y * a_scale) + a_lineSpace * _textParts.size() > a_drawableAreaSize.y)
 				break;
-			if (_textLen == i + 1)
+			if (m_textLen == i + 1)
 			{
 				if (_textPart.size())
 				{
@@ -140,25 +149,25 @@ void TextRenderer::Render(std::string a_text, XMFLOAT2 a_drawStartPosition, XMFL
 	}
 }
 
-void TextRenderer::ToolRender(const wchar_t* a_text, DirectX::XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize,
+void TextRenderer::ToolRender(DirectX::XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize,
 	TextAlignment a_textAlignment, float a_lineSpace, float a_rotation, DirectX::FXMVECTOR a_textColor, float a_scale, bool a_fullScreenTestFlag)
 {
-	int _textLen = std::wcslen(a_text);		//何文字か
-	std::wstring str(a_text);	//const wchar_t*をwstringに格納する
 	std::vector<std::wstring> _textParts;	//改行が行われるごとにこのコンテナに追加していく(改行無しの場合でも最低でも要素が1つは存在する設計)
 
+	int _drawTextLen = m_textLen <= m_drawableTextLen ? m_textLen : m_drawableTextLen;
+
 	//もし文字が入力されていたら
-	if (_textLen)
+	if (_drawTextLen)
 	{
 		std::wstring _textPart = {};	//改行されるまでの文字列をここにどんどん格納していく
 		DirectX::XMFLOAT2 _textPartSize{};	//文字を描画した際のサイズを格納する(スクリーン空間)
-		for (int i = 0; i < _textLen; i++)
+		for (int i = 0; i < _drawTextLen; i++)
 		{
 			//m_endsInNewlineの初期化
 			m_endIsNewline = false;
 			//コピー(次の文字を格納しても描画可能範囲から溢れないかをチェックするためにコピーする)
 			std::wstring _bummyTextPart = _textPart;
-			_bummyTextPart += str.at(i);	//継続条件が[i < _textLen]であるため問題なく指定要素を取得できる
+			_bummyTextPart += m_drawText.at(i);	//継続条件が[i < _textLen]であるため問題なく指定要素を取得できる
 			//文字列の長さを取得
 			DirectX::XMStoreFloat2(&_textPartSize, m_spriteFont->MeasureString(_bummyTextPart.c_str()));
 			//もし、描画可能範囲から溢れていたら
@@ -169,10 +178,10 @@ void TextRenderer::ToolRender(const wchar_t* a_text, DirectX::XMFLOAT2 a_drawSta
 				//クリア
 				_textPart = {};
 				//文字列を格納
-				_textPart += str.at(i);
+				_textPart += m_drawText.at(i);
 			}
 			//改行の入力がされていたら
-			else if (str.at(i) == L'\n')
+			else if (m_drawText.at(i) == L'\n')
 			{
 				//改行入力(\n)は格納し無くてよいので、_textPart += str.at(i)を行わない
 				//コンテナに改行されるまでの文字列データを格納
@@ -184,11 +193,11 @@ void TextRenderer::ToolRender(const wchar_t* a_text, DirectX::XMFLOAT2 a_drawSta
 			else
 			{
 				//文字列を格納
-				_textPart += str.at(i);
+				_textPart += m_drawText.at(i);
 			}
 			if (a_drawStartPosition.y - a_drawableAreaLeftTopPosition.y + (_textParts.size() + 1) * (m_fontSize.y * a_scale) + a_lineSpace * _textParts.size() > a_drawableAreaSize.y)
 				break;
-			if (_textLen == i + 1)
+			if (_drawTextLen == i + 1)
 			{
 				if (_textPart.size())
 				{

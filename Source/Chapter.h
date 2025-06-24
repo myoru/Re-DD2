@@ -2,6 +2,7 @@
 #include "Slide.h"
 #include "Json.h"
 #include <map>
+#include "SignBoard.h"
 
 class Chapter
 {
@@ -11,9 +12,12 @@ public:
 		m_slides.emplace_back(Slide());
 		m_currentSlide = &m_slides[m_currentSlideIndex];
 	}
-	~Chapter(){}
+	~Chapter() {}
 
 	void Update(float a_elapsedTime);
+	void ToolUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize);
+	void Render();
+	void ToolRender(DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize, bool a_isFullReview);
 
 	std::vector<Slide>& GetSlides() { return m_slides; }
 
@@ -42,4 +46,8 @@ protected:
 public:
 	Slide* m_currentSlide = nullptr; //現在のスライド
 	int m_currentSlideIndex = 0; //何枚目のスライドを選択しているかの変数(0なら1枚目)
+
+	//テキストウィンドウ用ポインタ変数
+	std::vector<std::unique_ptr<SignBoard>> m_signBoards;
+	float m_textTimer = 0.0f;
 };

@@ -91,9 +91,6 @@ private:
 	DirectX::XMFLOAT2 m_blackSpaceSize{}; //reviewScreenを描画するエリアのサイズ
 	DirectX::XMFLOAT2 m_remainingBlackSpaceSize{}; //reviewScreenを描画した後の黒い余白のサイズ
 
-	//テキストウィンドウ用ポインタ変数
-	std::vector<std::unique_ptr<SignBoard>> m_signBoards;
-
 	//チャプター用ポインタ変数
 	std::unique_ptr<Chapter> m_chapter; //Chapterポインタ
 

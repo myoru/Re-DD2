@@ -110,25 +110,20 @@ void SceneTool::Update(float a_elapsedTime)
 
 	//モード切り替え
 	ModeChange();
+
+	//分割線用のパラメーター更新
+	m_eventWindowRate = (1.0f - CharactersWindowRate) / 3.0f;
+	m_charactersWindowWidth = screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) * CharactersWindowRate - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f;
+	m_eventWindowWidth = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) - m_charactersWindowWidth) / 3.0f;
+	m_eventWindowDrawStartPos.x = screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
+	m_eventWindowDrawStartPos.y = screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
+	m_slideWindowHeight = screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
+
 	//レビュー画面パラメーター更新
 	ReviewBoardUpdate();
 	//矩形UIパラメーター更新
 	RectUIUpdate(a_elapsedTime);
 
-	//現在選択中のスライド更新
-	m_chapter->m_currentSlide = &m_chapter->GetSlides()[m_chapter->m_currentSlideIndex];
-
-	//看板(m_signBoard)が一つでも登録されていれば
-	if (m_signBoards.size())
-	{
-		//更新処理を行う
-		for (int i = 0; i < m_signBoards.size(); i++)
-		{
-			m_signBoards.at(i)->Update(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
-		}
-	}
-	//キャラクター更新
-	CharactersUpdate(a_elapsedTime);
 	//スライドジャンプ用UIのパラメーター更新
 	SlideJumpUpdate();
 	//マウスとスライドジャンプ用UIの当り判定
@@ -140,13 +135,8 @@ void SceneTool::Update(float a_elapsedTime)
 		RectUIHitCheck();
 	}
 
-	//分割線用のパラメーター更新
-	m_eventWindowRate = (1.0f - CharactersWindowRate) / 3.0f;
-	m_charactersWindowWidth = screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) * CharactersWindowRate - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f;
-	m_eventWindowWidth = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) - m_charactersWindowWidth) / 3.0f;
-	m_eventWindowDrawStartPos.x = screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
-	m_eventWindowDrawStartPos.y = screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
-	m_slideWindowHeight = screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
+	//chapterのTool用のUpdateを呼ぶ
+	m_chapter->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 
 	for (auto _action : m_chapter->m_currentSlide->m_actions)
 	{
@@ -448,25 +438,9 @@ void SceneTool::Render(float elapsedTime)
 
 		m_spriteBox.at(sc_i(SpriteKind::White))->Render(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize, 0.0f, m_reviewScreenColor);
 
-		//キャラクター描画
-		{
-			m_chapter->m_currentSlide->Render(m_reviewScreenLeftTopPos, m_reviewScreenSize);
-		}
+		m_chapter->ToolRender(m_reviewScreenLeftTopPos, m_reviewScreenSize, m_mode == Mode::Check ? true : false);
 
-		//看板(m_signBoard)が一つでも登録されていれば
-		if (m_signBoards.size())
-		{
-			for (int i = 0; i < m_signBoards.size(); i++)
-			{
-				m_signBoards.at(i)->BoardRender();
-			}
-			for (int i = 0; i < m_signBoards.size(); i++)
-			{
-				m_signBoards.at(i)->TextRender(m_chapter->m_currentSlide->m_inputBuffer, m_mode == Mode::Check ? true : false);
-			}
-		}
-
-		if (m_lines.size())
+		/*if (m_lines.size())
 		{
 			for (const float _line : m_lines)
 			{
@@ -475,7 +449,7 @@ void SceneTool::Render(float elapsedTime)
 			}
 			m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::LeftTop, m_reviewScreenLeftTopPos, { m_reviewScreenSize.x * lineNormalizeWallDistance / 2.0f,m_reviewScreenSize.y }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
 			m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::RightTop, { m_reviewScreenRightBottomPos.x,m_reviewScreenLeftTopPos.y }, { m_reviewScreenSize.x * lineNormalizeWallDistance / 2.0f,m_reviewScreenSize.y }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
-		}
+		}*/
 
 		//ページ数描画
 		{
@@ -516,7 +490,6 @@ void SceneTool::Render(float elapsedTime)
 	_rendering_state->SetDepthStencilState(_immediate_context, DEPTH_STENCIL_STATE::ZT_OFF_ZW_OFF);
 	_rendering_state->SetRasterizerState(_immediate_context, RASTERIZER_STATE::CULL_NONE);
 	m_bitBlockTransfer->Blit(_immediate_context, m_fb_fade->shader_resource_views[0].GetAddressOf(), 0, 1, m_fb_ps_fade.Get());
-
 
 	_rendering_state->SetBlendState(_immediate_context, BLEND_STATE::ALPHA);
 	_rendering_state->SetDepthStencilState(_immediate_context, DEPTH_STENCIL_STATE::ZT_OFF_ZW_OFF);
@@ -734,6 +707,7 @@ void SceneTool::ImGuiOperationWindow()
 	ImGui::InputInt("m_touchSlideIndex", &m_touchSlideIndex);
 	ImGui::InputInt("m_testNum", &m_testNum);
 	ImGui::InputFloat("m_slideClickTimer", &m_slideClickTimer);
+	ImGui::InputFloat("m_textTimer", &m_chapter->m_textTimer);
 
 	ImGui::End();
 	ImGui::PopStyleColor(2);
@@ -840,26 +814,26 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
-	if (m_signBoards.size())
+	if (m_chapter->m_signBoards.size())
 	{
 		ImVec2 _windowSize = ImGui::GetWindowSize();	//現在のImGuiのウィンドウのサイズ取得
 		//レビュー描画用の変数(座標)
-		for (int i = 0; i < m_signBoards.size(); i++)
+		for (int i = 0; i < m_chapter->m_signBoards.size(); i++)
 		{
 			if (ImGui::TreeNodeEx(("Board : " + std::to_string(i)).c_str(), ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				float _boardSpriteScaleX = 0.6f;
-				XMFLOAT2 _imageDrawSize = { _windowSize.x * _boardSpriteScaleX ,_windowSize.x * _boardSpriteScaleX * m_signBoards.at(i)->GetBoardSprite()->GetAspectRation() };
+				XMFLOAT2 _imageDrawSize = { _windowSize.x * _boardSpriteScaleX ,_windowSize.x * _boardSpriteScaleX * m_chapter->m_signBoards.at(i)->GetBoardSprite()->GetAspectRation() };
 				//もし、縦のサイズが大きすぎたら、
 				if (_imageDrawSize.y > screenSize.y * 0.2f)
 				{
 					float _boardSpriteScaleY = 0.15f;
 					//縦のサイズを補正して、それに応じた横のサイズを設定する
 					_imageDrawSize.y = screenSize.y * _boardSpriteScaleY;
-					_imageDrawSize.x = _imageDrawSize.y / m_signBoards.at(i)->GetBoardSprite()->GetAspectRation();
+					_imageDrawSize.x = _imageDrawSize.y / m_chapter->m_signBoards.at(i)->GetBoardSprite()->GetAspectRation();
 				}
 				//レビュー描画
-				ImGui::Image(m_signBoards.at(i)->GetBoardSprite()->GetShaderResource(), ImVec2(_imageDrawSize.x, _imageDrawSize.y));
+				ImGui::Image(m_chapter->m_signBoards.at(i)->GetBoardSprite()->GetShaderResource(), ImVec2(_imageDrawSize.x, _imageDrawSize.y));
 				ImGui::Separator();
 
 				strncpy_s(m_chapter->m_currentSlide->m_inputBuffer, sizeof(m_chapter->m_currentSlide->m_inputBuffer), m_chapter->m_currentSlide->m_text.c_str(), _TRUNCATE);
@@ -877,7 +851,7 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 
 				m_chapter->m_currentSlide->m_text = ConvertWideToUtf8(_wideBuffer);
 
-				//m_signBoards.at(i)->jElements.text = m_chapter->m_currentSlide->m_text;
+				//m_chapter->m_signBoards.at(i)->jElements.text = m_chapter->m_currentSlide->m_text;
 
 				//std::string& slideText = m_chapter->m_currentSlide->m_text;
 
@@ -893,24 +867,24 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 				//	ImGuiInputTextFlags_AllowTabInput)) {
 				//	slideText = std::string(buffer.data());
 				//}
-				//m_signBoards[i]->jElements.text = slideText;
+				//m_chapter->m_signBoards[i]->jElements.text = slideText;
 
 				/*std::string _label = "##" + std::to_string(i);
 				ImVec2 _InputAreaSize(ImGui::GetWindowSize().x * 0.75f, ImGui::GetWindowSize().y * 0.05f);
 				InputTextMultilineString(_label, m_chapter->m_currentSlide->m_text, _InputAreaSize);
-				m_signBoards[i]->jElements.text = m_chapter->m_currentSlide->m_text;*/
+				m_chapter->m_signBoards[i]->jElements.text = m_chapter->m_currentSlide->m_text;*/
 
 				/*wchar_t _wideBuffer[256] = {};
-				MultiByteToWideChar(CP_UTF8, 0, m_signBoards.at(i)->m_inputBuffer, -1, _wideBuffer, 256);
+				MultiByteToWideChar(CP_UTF8, 0, m_chapter->m_signBoards.at(i)->m_inputBuffer, -1, _wideBuffer, 256);
 				std::string sihsh = ConvertWideToUtf8(_wideBuffer);
-				m_signBoards.at(i)->jElements.text = ConvertWideToUtf8(_wideBuffer);*/
+				m_chapter->m_signBoards.at(i)->jElements.text = ConvertWideToUtf8(_wideBuffer);*/
 
 				/*wchar_t _wideBuffer[256] = {};
-				int result = MultiByteToWideChar(CP_UTF8, 0, m_signBoards.at(i)->m_inputBuffer, -1, _wideBuffer, 256);
+				int result = MultiByteToWideChar(CP_UTF8, 0, m_chapter->m_signBoards.at(i)->m_inputBuffer, -1, _wideBuffer, 256);
 				if (result > 0)
 				{
 					std::string utf8Text = ConvertWideToUtf8(_wideBuffer);
-					m_signBoards.at(i)->jElements.text = utf8Text;
+					m_chapter->m_signBoards.at(i)->jElements.text = utf8Text;
 				}*/
 
 				ImGui::TreePop();
@@ -932,11 +906,11 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 			MultiByteToWideChar(CP_ACP, 0, _selectFileName, -1, _wideBuffer, 256); //(wchar_t <--- char)
 			//絶対パスを相対パス化
 			auto _jsonFilePath = std::filesystem::relative(_wideBuffer);
-			m_signBoards.emplace_back(std::make_unique<SignBoard>(_device, _deviceContext, _jsonFilePath.string()));
+			m_chapter->m_signBoards.emplace_back(std::make_unique<SignBoard>(_device, _deviceContext, _jsonFilePath.string()));
 		}
 	}
 	//m_textWindowがnullptrじゃなかったら
-	if (m_signBoards.size())
+	if (m_chapter->m_signBoards.size())
 	{
 		ImGui::SameLine();
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 1.0f));
@@ -944,7 +918,7 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 		//Resetボタン(押すとtextWindowポインタをnullptrにする)
 		if (ImGui::Button("Reset Text Window", ImVec2(a_buttonWidth * 0.5f, 0.0f)))
 		{
-			m_signBoards.clear();
+			m_chapter->m_signBoards.clear();
 		}
 		ImGui::PopStyleColor(2);
 	}
@@ -1252,13 +1226,13 @@ void SceneTool::ImGuizmoRender()
 //	using SeparateType = ScreenSeparateLine::SeparateType;
 //
 //	//m_textWindowがnullptrじゃなかったら
-//	if (m_signBoards.size())
+//	if (m_chapter->m_signBoards.size())
 //	{
 //		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 1.0f));
 //		//Resetボタン(押すとtextWindowポインタをnullptrにする)
 //		if (ImGui::Button("Reset Text Window", ImVec2(a_buttonWidth, 0.0f)))
 //		{
-//			m_signBoards.clear();
+//			m_chapter->m_signBoards.clear();
 //		}
 //		ImGui::PopStyleColor(1);
 //	}
@@ -1276,8 +1250,8 @@ void SceneTool::ImGuizmoRender()
 //			MultiByteToWideChar(CP_ACP, 0, _selectFileName, -1, _wideBuffer, 256); //(wchar_t <--- char)
 //			//絶対パスを相対パス化
 //			auto _jsonFilePath = std::filesystem::relative(_wideBuffer);
-//			m_signBoards.emplace_back(std::make_unique<SignBoard>(_device, _deviceContext, _jsonFilePath.string()));
-//			m_signBoards.at(m_signBoards.size() - 1)->jElements.text = "こんばんは\nこんばんは\nおはよう";
+//			m_chapter->m_signBoards.emplace_back(std::make_unique<SignBoard>(_device, _deviceContext, _jsonFilePath.string()));
+//			m_chapter->m_signBoards.at(m_chapter->m_signBoards.size() - 1)->jElements.text = "こんばんは\nこんばんは\nおはよう";
 //		}
 //	}
 //	ImGui::Separator(); ImGui::Separator(); ImGui::Separator();

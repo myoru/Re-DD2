@@ -68,6 +68,7 @@ public:
 	std::string m_backSprFilePath{};
 	char m_inputBuffer[256] = {};
 	std::string m_text;
+	float m_textTimer = 0.0f;
 	float m_mainTimer{};
 	std::vector<std::shared_ptr<Action>> m_actions;
 };
