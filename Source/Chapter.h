@@ -9,8 +9,11 @@ public:
 	Chapter()
 	{
 		m_slides.emplace_back(Slide());
+		m_currentSlide = &m_slides[m_currentSlideIndex];
 	}
-	~Chapter() {}
+	~Chapter(){}
+
+	void Update(float a_elapsedTime);
 
 	std::vector<Slide>& GetSlides() { return m_slides; }
 
@@ -33,6 +36,10 @@ public:
 		cereal::JSONOutputArchive archive(ofs);
 		archive(CEREAL_NVP(chapter));
 	}
+
 protected:
 	std::vector<Slide> m_slides;
+public:
+	Slide* m_currentSlide = nullptr; //現在のスライド
+	int m_currentSlideIndex = 0; //何枚目のスライドを選択しているかの変数(0なら1枚目)
 };

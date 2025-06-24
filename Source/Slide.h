@@ -43,6 +43,9 @@ public:
 	enum class Type
 	{
 		Normal,
+		TextDrawName,
+		TextNotName,
+		NotText,
 	};
 
 	template<class T>
@@ -52,7 +55,8 @@ public:
 			CEREAL_NVP(m_type),
 			CEREAL_NVP(m_characters),
 			CEREAL_NVP(m_text),
-			CEREAL_NVP(m_actions)
+			CEREAL_NVP(m_actions),
+			CEREAL_NVP(m_backSprFilePath)
 		);
 	}
 public:

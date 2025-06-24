@@ -21,8 +21,10 @@ public:
 	void ModeChange(); //モード切り替え関数
 	void ReviewBoardUpdate();
 	void CharactersUpdate(float a_elapsedTime); //キャラクター更新処理
-	void RectUIUpdate(); //矩形UI更新処理
+	void RectUIUpdate(float a_elapsedTime); //矩形UI更新処理
 	void RectUIHitCheck(); //矩形UI当り判定
+	void SlideJumpUpdate();
+	void SlideJumpHitCheck(float a_elapsedTime);
 	void LineUpdate();
 	//描画処理
 	void Render(float elapsedTime)override;
@@ -77,7 +79,7 @@ private:
 	DirectX::XMFLOAT4 m_reviewScreenColor = { 1.0f,1.0f,1.0f,1.0f }; //色
 	DirectX::XMFLOAT2 m_reviewScreenNormalSize = { 16.0f,9.0f }; //縦横比
 	float m_reviewScreenAspectRate = 0.0f; //アスペクト比
-	bool m_reviewFullScreenTestFlag = false; //フルスクで表示するかのフラグ
+	//bool m_reviewFullScreenTestFlag = false; //フルスクで表示するかのフラグ
 
 	//ImGuiウィンドウ関連の変数
 	float m_charactersWindowWidth = 0.0f; //CharacterWindowの横幅
@@ -86,7 +88,8 @@ private:
 	DirectX::XMFLOAT2 m_eventWindowDrawStartPos = {}; //eventWindow(最も左)の描画開始位置
 	float m_slideWindowHeight = 0.0f; //SlideWindowの高さ
 	float m_reviewOffsetScale = 0.85f; //reviewScreenをどのくらいの割合で描画するか
-	DirectX::XMFLOAT2 m_blackSpaceSize{}; //reviewScreenを描画した後の黒い余白のサイズ
+	DirectX::XMFLOAT2 m_blackSpaceSize{}; //reviewScreenを描画するエリアのサイズ
+	DirectX::XMFLOAT2 m_remainingBlackSpaceSize{}; //reviewScreenを描画した後の黒い余白のサイズ
 
 	//テキストウィンドウ用ポインタ変数
 	std::vector<std::unique_ptr<SignBoard>> m_signBoards;
@@ -95,12 +98,19 @@ private:
 	std::unique_ptr<Chapter> m_chapter; //Chapterポインタ
 
 	//スライド用変数
-	Slide* m_currentSlide = nullptr; //現在のスライド
-	int m_slideIndex = 0; //何枚目のスライドを選択しているかの変数(0なら1枚目)
+	DirectX::XMFLOAT2 slideJumpUIDrawStartPos = {}; //スライド移動用UIの描画開始位置
+	DirectX::XMFLOAT2 m_slideJumpUISize = {}; //スライド移動用のスペースの描画サイズ
+	float m_slideJumpUIHeightRate = 0.8f; //黒い余白に対して、スライド移動用のスペースをどれくらいの大きさ(height)で描画するかの値
+	float m_slideJumpUIDrawWidth = 0.0f; //スライド移動用UIの一つ分の幅(当り判定はこの幅にslideJumpUIScaleRateをかけた物で行う)
+	int m_touchSlideIndex = -1; //何番目のスライドジャンプ用UIに触れているか
+	float slideJumpUIScaleRate = 0.8f; //ジャンプ用UI同士が間隔をあけて並ぶようにするために用意した変数
+	float m_slideClickTimer = 0.0f; //ダブルクリックを検知するためのタイマー()
+	float m_doubleClickTime = 0.5f; //ダブルクリック入力を許容する時間
 
 	//Guizmo用変数
 	bool m_usingGuizmo = false;	//Guizmo使用中かのフラグ
 	int m_guizmoType = 0; //Guizmoの操作タイプ(移動 or 拡大・縮小)
+	int m_testNum = 0;
 
 	//グリッド線用の変数
 	std::vector<float> m_lines; //線の配列

@@ -30,7 +30,7 @@ public:
 
 	Action() = default;
 	Action(Data a_data) :m_data(a_data) {}
-	~Action() {}
+	virtual ~Action() = default;
 
 	virtual void Excute(float a_elapsedTime) {};
 

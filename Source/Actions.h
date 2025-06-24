@@ -41,7 +41,7 @@ public:
 	template<class T>
 	void serialize(T& archive)
 	{
-		Action::serialize(archive);
+		archive(cereal::base_class<Action>(this));
 	}
 };
 CEREAL_REGISTER_TYPE(Vibe)
@@ -64,7 +64,7 @@ public:
 	template<class T>
 	void serialize(T& archive)
 	{
-		Action::serialize(archive);
+		archive(cereal::base_class<Action>(this));
 	}
 };
 CEREAL_REGISTER_TYPE(MusicStart)
@@ -93,8 +93,17 @@ public:
 	template<class T>
 	void serialize(T& archive)
 	{
-		Action::serialize(archive);
+		archive(cereal::base_class<Action>(this));
+		archive(CEREAL_NVP(count));
 	}
+
+public:
+	int count = 0;
+	//if (MusicStop* musicStop = dynamic_cast<MusicStop*>(action)) 
+	//{
+	//	int c = musicStop->count;
+	//	musicStop->count = 42;  // èëÇ´çûÇ›Ç‡OK
+	//}
 };
 CEREAL_REGISTER_TYPE(MusicStop)
 CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, MusicStop)
