@@ -45,7 +45,7 @@ SignBoard::~SignBoard()
 {
 }
 
-void SignBoard::Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition, DirectX::XMFLOAT2 a_screenSize)
+bool SignBoard::Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition, DirectX::XMFLOAT2 a_screenSize)
 {
 	Graphics& _graphics = Graphics::Instance();
 	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
@@ -99,7 +99,7 @@ void SignBoard::Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTe
 	wchar_t _wideBuffer[256] = {};
 	MultiByteToWideChar(CP_UTF8, 0, a_textBuffer, -1, _wideBuffer, 256);
 
-	m_textRenderer->Update(_wideBuffer, a_drawableTextLen);
+	return m_textRenderer->Update(_wideBuffer, a_drawableTextLen);
 }
 
 void SignBoard::BoardRender()

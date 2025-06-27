@@ -29,10 +29,15 @@ public:
 	};
 
 	Action() = default;
-	Action(Data a_data) :m_data(a_data) {}
+	Action(Data a_data) :m_data(a_data) 
+	{
+		/*Enter();*/
+	}
 	virtual ~Action() = default;
 
+	virtual void Enter() {};
 	virtual void Excute(float a_elapsedTime) {};
+	virtual void Exit() {};
 
 	Data m_data;
 

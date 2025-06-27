@@ -116,7 +116,7 @@ Audio::Audio(const wchar_t* filename)
 	_ASSERT_EXPR(filetype == 'EVAW'/*WAVE*/, L"Only support 'WAVE'");
 
 	FindChunk(hfile, ' tmf'/*FMT*/, chunk_size, chunk_position);
-	ReadChunkData(hfile, &wf_xtensible, chunk_size, chunk_position);
+	ReadChunkData(hfile, &wfXtensible, chunk_size, chunk_position);
 
 	//fill out the audio data buffer with the contents of the fourccDATA chunk
 	FindChunk(hfile, 'atad'/*DATA*/, chunk_size, chunk_position);
@@ -127,13 +127,15 @@ Audio::Audio(const wchar_t* filename)
 	buffer.pAudioData = data;  //buffer containing audio data
 	buffer.Flags = XAUDIO2_END_OF_STREAM; // tell the source voice not to expect any data after this buffer
 
-	hr = _xaudio2->CreateSourceVoice(&source_voice, (WAVEFORMATEX*)&wf_xtensible);
+	hr = _xaudio2->CreateSourceVoice(&sourceVoice, (WAVEFORMATEX*)&wfXtensible);
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
+
+	sourceVoice->GetVolume(&volume);
 }
 
 Audio::~Audio()
 {
-	source_voice->DestroyVoice();
+	sourceVoice->DestroyVoice();
 	delete[] buffer.pAudioData;
 }
 
@@ -142,54 +144,69 @@ void Audio::Play(bool loop)
 	HRESULT hr;
 
 	XAUDIO2_VOICE_STATE voice_state = {};
-	source_voice->GetState(&voice_state);
+	sourceVoice->GetState(&voice_state);
 
 	if (voice_state.BuffersQueued)
 	{
 
-		//stop(false, 0);
 		return;
 	}
 
 	buffer.LoopCount = loop ? XAUDIO2_LOOP_INFINITE : 0;
-	hr = source_voice->SubmitSourceBuffer(&buffer);
+	hr = sourceVoice->SubmitSourceBuffer(&buffer);
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
 
-	hr = source_voice->Start(0);
+	hr = sourceVoice->Start(0);
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
 }
 
 void Audio::Stop(bool play_tails, bool wait_for_buffer_to_unqueue)
 {
 	XAUDIO2_VOICE_STATE voice_state = {};
-	source_voice->GetState(&voice_state);
+	sourceVoice->GetState(&voice_state);
 	if (!voice_state.BuffersQueued)
 	{
 		return;
 	}
 
 	HRESULT hr;
-	hr = source_voice->Stop(play_tails ? XAUDIO2_PLAY_TAILS : 0);
+	hr = sourceVoice->Stop(play_tails ? XAUDIO2_PLAY_TAILS : 0);
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
 
-	hr = source_voice->FlushSourceBuffers();
+	hr = sourceVoice->FlushSourceBuffers();
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
 
 	while (wait_for_buffer_to_unqueue && voice_state.BuffersQueued)
 	{
-		source_voice->GetState(&voice_state);
+		sourceVoice->GetState(&voice_state);
 	}
 }
 
-void Audio::Volume(float volume)
+void Audio::SetVolume(float a_volume)
 {
-	HRESULT hr = source_voice->SetVolume(volume);
+	volume = a_volume;
+	HRESULT hr = sourceVoice->SetVolume(volume);
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
 }
 
 bool Audio::Queuing()
 {
 	XAUDIO2_VOICE_STATE voice_state = {};
-	source_voice->GetState(&voice_state);
+	sourceVoice->GetState(&voice_state);
 	return voice_state.BuffersQueued;
+}
+
+bool Audio::IsPlaying()
+{
+	XAUDIO2_VOICE_STATE _voiceState = {};
+	sourceVoice->GetState(&_voiceState);
+
+	if (_voiceState.BuffersQueued)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }

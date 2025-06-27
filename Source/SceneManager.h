@@ -3,6 +3,7 @@
 #include "Singleton.h"
 #include "AllFacialSet.h"
 #include "AllBGM.h"
+#include "Options.h"
 
 ///シーンマネージャー
 class SceneManager : public Singleton<SceneManager>
@@ -38,5 +39,6 @@ public:
 private:
 	AllFacialSet m_allFacialSet;
 	AllBGM m_allBGM;
+	Options m_options;
 };
 

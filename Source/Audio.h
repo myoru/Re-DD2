@@ -9,11 +9,14 @@ public:
 
 	void Play(bool loop);
 	void Stop(bool play_tails = true, bool wait_for_buffer_to_unqueue = true);
-	void Volume(float volume);
+	void SetVolume(float a_volume);
+	float GetVolume() { return volume; }
 	bool Queuing();
+	bool IsPlaying();
 
 private:
-	WAVEFORMATEXTENSIBLE wf_xtensible = { 0 };
+	WAVEFORMATEXTENSIBLE wfXtensible = { 0 };
 	XAUDIO2_BUFFER buffer = { 0 };
-	IXAudio2SourceVoice* source_voice;
+	IXAudio2SourceVoice* sourceVoice;
+	float volume = 0.0f;
 };

@@ -1,6 +1,7 @@
 #pragma once
 #include "Character.h"
 #include "Action.h"
+#include "Input.h"
 
 class Slide
 {
@@ -9,35 +10,12 @@ public:
 	Slide(Type a_type = Type::Normal);
 	~Slide();
 
+	//キャラクター削除関数  ※Tool用
 	void DeleteCharacter();
-
+	//更新処理
+	bool Update(float a_elapsedTime, const Mouse& a_mouse);
+	//描画関数
 	void Render(DirectX::XMFLOAT2 a_reviewLeftTopPos,DirectX::XMFLOAT2 a_reviewSize);
-
-	/*void ExcuteAllActions()
-	{
-		for (auto& [_key, _action] : m_actions)
-		{
-			m_actions[_key].function();
-		}
-	}
-	void ExcuteAction(const std::string& a_key)
-	{
-		m_actions[a_key].function();
-	}
-
-	void AddAction(const std::string& a_key, std::function<void()> a_action)
-	{
-		m_actions[a_key].function = a_action;
-	}
-	void DeleteAction(const std::string& a_key)
-	{
-		m_actions.erase(a_key);
-	}
-	void DeleteAllAction(const std::string& a_key)
-	{
-		m_actions.clear();
-	}*/
-
 public:
 	//スライドの種類
 	enum class Type
@@ -46,6 +24,14 @@ public:
 		TextDrawName,
 		TextNotName,
 		NotText,
+	};
+
+	enum class State
+	{
+		StartUp,
+		Reading,
+		ReadEnd,
+		SlideMove,
 	};
 
 	template<class T>
@@ -60,15 +46,20 @@ public:
 		);
 	}
 public:
-	int m_type = static_cast<int>(Type::Normal);
-	std::vector<std::shared_ptr<Character>> m_characters;
-	std::set<std::shared_ptr<Character>> m_removes;
-	int m_characterIndex = 0;
-	std::shared_ptr<Sprite> m_backSpr;
-	std::string m_backSprFilePath{};
-	char m_inputBuffer[256] = {};
-	std::string m_text;
-	float m_textTimer = 0.0f;
-	float m_mainTimer{};
-	std::vector<std::shared_ptr<Action>> m_actions;
+	int m_type = static_cast<int>(Type::Normal); //スライドのタイプ
+	int m_state = static_cast<int>(State::StartUp); //ステート
+	std::vector<std::shared_ptr<Character>> m_characters; //スライドに登場するキャラクター
+	std::set<std::shared_ptr<Character>> m_removes; //キャラクターの削除リスト ※Tool用
+	int m_characterIndex = 0; //どのキャラクターを選んでいるか ※おそらくTool用
+	std::shared_ptr<Sprite> m_backSpr; //背景スプライト
+	std::string m_backSprFilePath{}; //背景スプライトのファイルパス  ※Json
+	char m_inputBuffer[256] = {}; //テキストウィンドウ用文字列
+	std::string m_text; //テキストウィンドウ用文字列  ※Json
+	float m_mainTimer{}; //スライドごとのタイマー
+	float m_textTimer = 0.0f; //テキスト送りに使うタイマー(int型にcastして使う)
+	std::vector<std::shared_ptr<Action>> m_actions; //スライドで行うアクションリスト(例,BGM再生・停止)
+	float m_startUpTimer = 0.0f;
+	float m_startUpTime = 0.35f;
+	float m_readEndTimer = 0.0f;
+	float m_readEndTime = 0.2f;
 };

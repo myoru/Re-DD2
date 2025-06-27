@@ -7,6 +7,7 @@ bool SceneManager::InitializeElements()
 {
 	AllFacialSet::GetInstance()->Initialize();
 	AllBGM::GetInstance()->Initialize();
+	Options::GetInstance()->Initialize();
 
 	return true;
 }

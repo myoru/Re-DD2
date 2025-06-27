@@ -15,7 +15,7 @@ public:
 	SignBoard(ID3D11Device* a_device, ID3D11DeviceContext* a_deviceContext, std::string a_jsonFileName);
 	~SignBoard();
 
-	void Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition = { 0.0f,0.0f }, DirectX::XMFLOAT2 a_screenSize = { -1.0f,-1.0f });
+	bool Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition = { 0.0f,0.0f }, DirectX::XMFLOAT2 a_screenSize = { -1.0f,-1.0f });
 	void BoardRender();
 	void TextRender(bool a_fullscreen, FXMVECTOR a_textColor = Colors::Red);
 	void ToolRender(bool a_fullscreen, FXMVECTOR a_textColor = Colors::White);

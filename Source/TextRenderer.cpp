@@ -16,11 +16,11 @@ bool TextRenderer::Update(const wchar_t* a_text, int a_drawTextLen)
 	m_textLen = m_drawText.length(); //‰½•¶Žš‚©
 	m_drawableTextLen = a_drawTextLen;
 
-	if (m_textLen < m_drawableTextLen)
+	if (m_textLen >= m_drawableTextLen)
 	{
-		return true;
+		return false;
 	}
-	return false;
+	return true;
 }
 
 void TextRenderer::Begin()

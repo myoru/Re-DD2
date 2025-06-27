@@ -4,18 +4,11 @@
 #include "Action.h"
 #include "AllBGM.h"
 
-//static void MakeUpAction(std::vector<std::shared_ptr<Action>>& a_actions, Action::Data a_actionData)
-//{
-//	const std::string _name = a_actionData.name;
-//	if (_name == "Vibe")
-//	{
-//		a_actions.emplace_back(std::make_shared<Action>(a_actionData));
-//	}
-//	if (_name == "Vibe")
-//	{
-//		a_actions.emplace_back(std::make_shared<Action>(a_actionData));
-//	}
-//}
+static inline std::vector<std::string> actionStrList =
+{
+	reinterpret_cast<const char*>(u8"âÊñ êUìÆ"),
+	reinterpret_cast<const char*>(u8"BGMçƒê∂"),
+	reinterpret_cast<const char*>(u8"BGMí‚é~") };
 
 class Vibe : public Action
 {
@@ -54,9 +47,8 @@ public:
 	MusicStart(Action::Data a_data) :Action(a_data) {}
 	~MusicStart() {}
 
-	void Excute(float a_elapsedTime)override
+	void Enter()override
 	{
-		if (m_data.isEnd == true)return;
 		AllBGM::GetInstance()->GetBGM(m_data.index)->Play(true);
 		m_data.isEnd = true;
 	}
@@ -70,22 +62,35 @@ public:
 CEREAL_REGISTER_TYPE(MusicStart)
 CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, MusicStart)
 
-class MusicStop : public Action
+class AllMusicStop : public Action
 {
 public:
-	MusicStop() = default;
-	MusicStop(Action::Data a_data) :Action(a_data) {}
-	~MusicStop() {}
+	AllMusicStop() = default;
+	AllMusicStop(Action::Data a_data) :Action(a_data) {}
+	~AllMusicStop() {}
 
 	void Excute(float a_elapsedTime)override
 	{
-		if (m_data.isEnd == true)return;
-		static float _volume = 1.0f;
-		_volume -= a_elapsedTime;
-		AllBGM::GetInstance()->GetBGM(m_data.index)->Volume(_volume);
-		if (_volume < 0.0f)
+		bool _allBGMStopFlag = true;
+		for (auto& _BGM : AllBGM::GetInstance()->GetBGMBox())
 		{
-			AllBGM::GetInstance()->GetBGM(m_data.index)->Stop(true);
+			if (_BGM->IsPlaying())
+			{
+				float _beforeVolume = _BGM->GetVolume();
+				float _afterVolume = _beforeVolume * 0.95f;
+				if (_afterVolume < 0.05f)
+				{
+					_BGM->Stop();
+				}
+				else
+				{
+					_BGM->SetVolume(_afterVolume);
+					_allBGMStopFlag = false;
+				}
+			}
+		}
+		if (_allBGMStopFlag)
+		{
 			m_data.isEnd = true;
 		}
 	}
@@ -105,5 +110,5 @@ public:
 	//	musicStop->count = 42;  // èëÇ´çûÇ›Ç‡OK
 	//}
 };
-CEREAL_REGISTER_TYPE(MusicStop)
-CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, MusicStop)
+CEREAL_REGISTER_TYPE(AllMusicStop)
+CEREAL_REGISTER_POLYMORPHIC_RELATION(Action, AllMusicStop)

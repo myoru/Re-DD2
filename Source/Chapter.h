@@ -46,8 +46,7 @@ protected:
 public:
 	Slide* m_currentSlide = nullptr; //現在のスライド
 	int m_currentSlideIndex = 0; //何枚目のスライドを選択しているかの変数(0なら1枚目)
-
-	//テキストウィンドウ用ポインタ変数
-	std::vector<std::unique_ptr<SignBoard>> m_signBoards;
-	float m_textTimer = 0.0f;
+	std::vector<std::unique_ptr<SignBoard>> m_signBoards; //テキストウィンドウ用ポインタ変数
+	//float m_textTimer = 0.0f; //テキスト送りに使うタイマー(int型にcastして使う)
+	bool m_textReadEndFlag = false;
 };

@@ -20,7 +20,7 @@ public:
 	void Update(float elapsedTime)override;
 	void ModeChange(); //モード切り替え関数
 	void ReviewBoardUpdate();
-	void CharactersUpdate(float a_elapsedTime); //キャラクター更新処理
+	//void CharactersUpdate(float a_elapsedTime); //キャラクター更新処理
 	void RectUIUpdate(float a_elapsedTime); //矩形UI更新処理
 	void RectUIHitCheck(); //矩形UI当り判定
 	void SlideJumpUpdate();
@@ -36,6 +36,7 @@ public:
 	void ImGuiTextWindow(float a_buttonWidth);
 	void ImGuiAssetsWindow(float a_buttonWidth);
 	void ImGuiAllCharactersWindow(float a_buttonWidth);
+	void ImGuiActionsWindow(float a_buttonWidth);
 	//Slideウィンドウ用のImGui描画関数
 	void ImGuiSlideWindow();
 	void ImGuiCharactersWindow();
