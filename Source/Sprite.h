@@ -12,7 +12,7 @@ public:
 	Sprite(const wchar_t* filename, BasePoint c_basePoint = BasePoint::Center);
 	~Sprite() {}
 
-	void ReloadTexture(ID3D11Device* a_device,const wchar_t* filename);
+	void ReloadTexture(ID3D11Device* a_device, const wchar_t* filename);
 
 	//画面サイズに引き伸ばして描画
 	void Render();
@@ -21,133 +21,153 @@ public:
 		float dx, float dy,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	//描画位置＆描画サイズ、切り取り位置、切り取りサイズ色、角度を指定して描画
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy, float dw, float dh,
 		float sx, float sy, float sw, float sh,
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		DirectX::XMFLOAT2 cutPos,	/*切り取り開始位置*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		DirectX::XMFLOAT2 cutPos,	/*座標*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		DirectX::XMFLOAT2 cutPos,	/*切り取り開始位置*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		float sx, float sy, /*切り取り開始位置*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		DirectX::XMFLOAT2 cutPos,	/*切り取り開始位置*/
 		float sw, float sh, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		DirectX::XMFLOAT2 cutPos,	/*切り取り開始位置*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		float sx, float sy, /*切り取り開始位置*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy,	/*切り取り開始位置*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		DirectX::XMFLOAT2 cutPos,	/*切り取り開始位置*/
 		float sw, float sh, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		float sx, float sy, /*切り取り開始位置*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		DirectX::XMFLOAT2 cutPos,	/*切り取り開始位置*/
 		float sw, float sh, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		float sx, float sy, /*切り取り開始位置*/
 		float sw, float sh, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		float sx, float sy, /*切り取り開始位置*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy,	/*座標*/
 		DirectX::XMFLOAT2 size, /*矩形のサイズ*/
 		float sx, float sy, /*切り取り開始位置*/
 		float sw, float sh, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		float dx, float dy,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		DirectX::XMFLOAT2 cutPos,	/*切り取り開始位置*/
 		float sw, float sh, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 	void Render(BasePoint basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
 		float dw, float dh, /*矩形のサイズ*/
 		float sx, float sy, /*切り取り開始位置*/
 		float sw, float sh, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 
 	void Render(DirectX::XMFLOAT2 a_basePoint,/*基準点*/
 		DirectX::XMFLOAT2 pos,	/*座標*/
@@ -155,18 +175,21 @@ public:
 		DirectX::XMFLOAT2 cutPos,	/*切り取り開始位置*/
 		DirectX::XMFLOAT2 cutSize, /*切り取りサイズ*/
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 
 	void OutLineRender(BasePoint basePoint,/*基準点*/
 		float dx, float dy, float dw, float dh,
 		float sx, float sy, float sw, float sh,
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f }/*色(rgba(0 ~ 1))*/);
+		DirectX::XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f },/*色(rgba(0 ~ 1))*/
+		bool a_rotateCenter = true);
 
 	void OutLineRender(BasePoint basePoint,/*基準点*/
 		float dx, float dy, float dw, float dh,
 		float angle = 0.0f, /*90,180,270など*/
-		DirectX::XMFLOAT4 color = { 0.0f,0.0f,0.0f,1.0f });
+		DirectX::XMFLOAT4 color = { 0.0f,0.0f,0.0f,1.0f },
+		bool a_rotateCenter = true);
 
 	// テクスチャ幅取得
 	float GetTextureWidth() const { return textureWidth; }

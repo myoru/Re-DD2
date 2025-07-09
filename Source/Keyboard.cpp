@@ -16,7 +16,6 @@ void Keyboard::Update()
     if (GetAsyncKeyState('E') & 0x8000)_new_input_key |= E;
     if (GetAsyncKeyState('R') & 0x8000)_new_input_key |= R;
     if (GetAsyncKeyState('F') & 0x8000)_new_input_key |= F;
-    if (GetAsyncKeyState('V') & 0x8000)_new_input_key |= V;
     if (GetAsyncKeyState('I') & 0x8000)_new_input_key |= I;
     if (GetAsyncKeyState('J') & 0x8000)_new_input_key |= J;
     if (GetAsyncKeyState('K') & 0x8000)_new_input_key |= K;

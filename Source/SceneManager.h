@@ -2,7 +2,7 @@
 #include "Scene.h"
 #include "Singleton.h"
 #include "AllFacialSet.h"
-#include "AllBGM.h"
+#include "AllAudio.h"
 #include "Options.h"
 
 ///シーンマネージャー
@@ -38,7 +38,7 @@ public:
 
 private:
 	AllFacialSet m_allFacialSet;
-	AllBGM m_allBGM;
+	AllAudio m_allAudio;
 	Options m_options;
 };
 

@@ -9,7 +9,7 @@
 class SceneTool : public Scene
 {
 public:
-	SceneTool(){};
+	SceneTool() {};
 	~SceneTool() override {}
 
 	//初期化
@@ -17,14 +17,13 @@ public:
 	//終了化
 	void Finalize()override;
 	//更新処理
-	void Update(float elapsedTime)override;
+	void Update(float elapsedTime)override; //メインの更新関数
 	void ModeChange(); //モード切り替え関数
-	void ReviewBoardUpdate();
-	//void CharactersUpdate(float a_elapsedTime); //キャラクター更新処理
+	void ReviewBoardUpdate(); //レビュー画面の更新処理
 	void RectUIUpdate(float a_elapsedTime); //矩形UI更新処理
-	void RectUIHitCheck(); //矩形UI当り判定
-	void SlideJumpUpdate();
-	void SlideJumpHitCheck(float a_elapsedTime);
+	void RectUIHitCheck(); //矩形UIの当り判定
+	void SlideJumpUpdate(); //スライドジャンプ用UIのパラメーター更新
+	void SlideJumpHitCheck(float a_elapsedTime); //マウスとスライドジャンプ用UIの当り判定
 	void LineUpdate();
 	//描画処理
 	void Render(float elapsedTime)override;
@@ -32,19 +31,24 @@ public:
 	//ImGui描画関数
 	void ImGuiRender()override;
 	void ImGuiOperationWindow();
+	void ImGuiSlideshowWindow();
+	void ImGuiEndSlideshowWindow();
 	//Assetウィンドウ用のImGui描画関数
 	void ImGuiTextWindow(float a_buttonWidth);
 	void ImGuiAssetsWindow(float a_buttonWidth);
 	void ImGuiAllCharactersWindow(float a_buttonWidth);
+	void ImGuiBackSpriteWindow(float a_buttonWidth);
 	void ImGuiActionsWindow(float a_buttonWidth);
 	//Slideウィンドウ用のImGui描画関数
 	void ImGuiSlideWindow();
 	void ImGuiCharactersWindow();
 	void ImGuiEnterWindow();
-	void ImGuiExcuteWindow();
+	void ImGuiExecuteWindow();
 	void ImGuiExitWindow();
 	//Guizmo関数
 	void ImGuizmoRender();
+	void CharacterGuizmo();
+	void CharacterActionsGuizmo();
 #endif // USE_IMGUI
 	//画面サイズ変更時に呼ばれる関数
 	void OnSizeChange()override;
@@ -109,14 +113,18 @@ private:
 	bool m_usingGuizmo = false;	//Guizmo使用中かのフラグ
 	int m_guizmoType = 0; //Guizmoの操作タイプ(移動 or 拡大・縮小)
 	int m_testNum = 0;
+	int m_guizmoOperateObject = 0;
+	int selectActionIndex = 0;
+	float m_guizmoViewMat[16] = {};
+	float m_guizmoProjMat[16] = {};
 
 	//グリッド線用の変数
 	std::vector<float> m_lines; //線の配列
 	float lineNormalizeWallDistance = 0.1f; //0.0f ~ 1.0f
 	float lineNormalizeDistance = 0.1f;  //0.0f ~ 1.0f
 
-	std::unordered_map<std::string,std::unique_ptr<RectUI>> m_rectUIs; //当り判定が矩形のUI配列
-	
+	std::unordered_map<std::string, std::unique_ptr<RectUI>> m_rectUIs; //当り判定が矩形のUI配列
+
 	enum class SpriteKind
 	{
 		White,
@@ -126,8 +134,15 @@ private:
 	enum class Mode
 	{
 		Edit, //編集
-		Check, //確認
 		Slideshow, //スライドショー
+		EndSlideShow, //スライドショー終了
 	};
+
+	enum class GuizmoOperateObject
+	{
+		Character,
+		CharacterAction,
+	};
+
 	Mode m_mode = Mode::Edit; //現在のモード
 };

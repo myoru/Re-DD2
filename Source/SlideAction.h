@@ -3,41 +3,38 @@
 #include <string>
 #include "Json.h"
 
-class Action
+class SlideAction
 {
 public:
+	enum class Attribute
+	{
+		Enter,
+		Execute,
+		Exit,
+	};
+
 	struct Data
 	{
 		std::string name = {};
 		int index = -1;
+		int mode = 0;
 		float timer = 0.0f;
 		float power = 0.0f;
 		bool isEnd = false;
-
-		/*template<class T>
-		void serialize(T& archive)
-		{
-			archive
-			(
-				CEREAL_NVP(name),
-				CEREAL_NVP(timer),
-				CEREAL_NVP(power),
-				CEREAL_NVP(index),
-				CEREAL_NVP(isEnd)
-			);
-		}*/
 	};
 
-	Action() = default;
-	Action(Data a_data) :m_data(a_data) 
-	{
-		/*Enter();*/
-	}
-	virtual ~Action() = default;
+	SlideAction() = default;
+	SlideAction(Data a_data) :m_data(a_data) {}
+	virtual ~SlideAction() = default;
 
 	virtual void Enter() {};
-	virtual void Excute(float a_elapsedTime) {};
+	virtual bool Execute(float a_elapsedTime) { return true; };
 	virtual void Exit() {};
+
+	virtual void OperateData() {}
+	virtual void ShowEnter() {}
+	virtual void ShowExecute() {}
+	virtual void ShowExit() {}
 
 	Data m_data;
 

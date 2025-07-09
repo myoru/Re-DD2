@@ -93,3 +93,18 @@ static void CopyStringToBuffer(const std::string& a_src, char* a_dst)
 	strncpy_s(a_dst, _size, a_src.c_str(), _TRUNCATE);
 	//a_dst[_size - 1] = '\0';
 }
+
+//char[]の文字数カウント
+static int countUTF8Chars(const char* str)
+{
+	int count = 0;
+	while (*str) 
+	{
+		// 先頭ビットが 0xxxxxxx（ASCII）または 11xxxxxx（UTF-8の先頭バイト）のときカウント
+		if ((*str & 0xC0) != 0x80) {
+			++count;
+		}
+		++str;
+	}
+	return count;
+}

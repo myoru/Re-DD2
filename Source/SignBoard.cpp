@@ -45,7 +45,56 @@ SignBoard::~SignBoard()
 {
 }
 
-bool SignBoard::Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition, DirectX::XMFLOAT2 a_screenSize)
+void SignBoard::Update(float a_elapsedTime)
+{
+	Graphics& _graphics = Graphics::Instance();
+	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
+	XMFLOAT2 _screenCenterPos = { _screenSize.x * 0.5f,_screenSize.y * 0.5f };
+
+	//ボードのパラメーター更新
+	{
+		jElements.boardSize.x = _screenSize.x * jElements.boardLocalSize.x;
+		jElements.boardSize.y = _screenSize.y * jElements.boardLocalSize.y;
+		jElements.boardPosition.x = _screenSize.x * jElements.boardLocalPosition.x;
+		jElements.boardPosition.y = _screenSize.y * jElements.boardLocalPosition.y;
+	}
+
+	//テキスト描画可能エリアのパラメーター更新
+	{
+		//テキストウィンドウの左上の座標を取得
+		XMFLOAT2 _boardLeftTopPosition = CalcSquareLeftTopPosition(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
+
+		jElements.textDrawableAreaSize.x = jElements.boardSize.x * jElements.textDrawableAreaLocalSize.x;
+		jElements.textDrawableAreaSize.y = jElements.boardSize.y * jElements.textDrawableAreaLocalSize.y;
+		jElements.textDrawableAreaPosition.x = _boardLeftTopPosition.x + (jElements.boardSize.x * jElements.textDrawableAreaLocalPosition.x);
+		jElements.textDrawableAreaPosition.y = _boardLeftTopPosition.y + (jElements.boardSize.y * jElements.textDrawableAreaLocalPosition.y);
+	}
+
+	//テキスト描画開始位置のパラメーター更新
+	{
+		//テキスト描画が可能なエリアの左上、および右下の座標を取得
+		XMFLOAT2 _textDrawableAreaLeftTopPosition = CalcSquareLeftTopPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
+		XMFLOAT2 _textDrawableAreaRightBottomPosition = CalcSquareRightBottomPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
+
+		jElements.textScale = (jElements.textDrawableAreaSize.y * jElements.textLocalHeight) / m_textRenderer->GetFontSize().y;
+		//アライメントに応じたテキスト描画開始位置のＸ成分を計算
+		switch (static_cast<TextRenderer::TextAlignment>(jElements.textAlignment))
+		{
+		case TextRenderer::TextAlignment::Leading:
+			jElements.textDrawStartPosition.x = _textDrawableAreaLeftTopPosition.x; break;
+		case TextRenderer::TextAlignment::Center:
+			jElements.textDrawStartPosition.x = jElements.textDrawableAreaPosition.x; break;
+		case TextRenderer::TextAlignment::Trailing:
+			jElements.textDrawStartPosition.x = _textDrawableAreaRightBottomPosition.x; break;
+		}
+		//テキスト描画開始位置のｙ成分を計算
+		jElements.textDrawStartPosition.y = _textDrawableAreaLeftTopPosition.y + (jElements.textDrawableAreaSize.y * jElements.textDrawStartLocalPosition.y);
+
+		jElements.lineSpace = jElements.textDrawableAreaSize.y * jElements.localLineSpace;
+	}
+}
+
+void SignBoard::ToolUpdate(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition, DirectX::XMFLOAT2 a_screenSize)
 {
 	Graphics& _graphics = Graphics::Instance();
 	XMFLOAT2 _screenSize = { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() };
@@ -99,7 +148,18 @@ bool SignBoard::Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTe
 	wchar_t _wideBuffer[256] = {};
 	MultiByteToWideChar(CP_UTF8, 0, a_textBuffer, -1, _wideBuffer, 256);
 
-	return m_textRenderer->Update(_wideBuffer, a_drawableTextLen);
+	m_textRenderer->Update(_wideBuffer, a_drawableTextLen);
+}
+
+void SignBoard::Render(FXMVECTOR a_textColor)
+{
+	m_boardSpr->Render(BasePoint::Center, jElements.boardPosition, jElements.boardSize);
+
+	m_textRenderer->Begin();
+	XMFLOAT2 _textDrawableAreaLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, jElements.textDrawableAreaPosition, jElements.textDrawableAreaSize);
+	m_textRenderer->Render(jElements.text, jElements.textDrawStartPosition, _textDrawableAreaLeftTopPos, jElements.textDrawableAreaSize,
+		static_cast<TextRenderer::TextAlignment>(jElements.textAlignment), jElements.lineSpace, a_textColor, jElements.textScale);
+	m_textRenderer->End();
 }
 
 void SignBoard::BoardRender()

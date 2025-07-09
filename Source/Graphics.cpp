@@ -240,7 +240,7 @@ void Graphics::CreateDirect2dObjects()
 // コンストラクタ
 Graphics::Graphics(HWND hWnd, bool fullscreen)
 	:hWnd(hWnd)
-	, fullscreen_mode(fullscreen)
+	, fullscreenMode(fullscreen)
 	, windowed_style(static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_STYLE)))//要調査
 {
 	//フルスクリーンの設定をする(コンストラクタはGraphicsでアップデートもGraphicsで)
@@ -350,7 +350,7 @@ Graphics::~Graphics()
 
 void Graphics::ChangeFullScreen(HWND hwnd, bool fullscreen)
 {
-	fullscreen_mode = fullscreen;
+	fullscreenMode = fullscreen;
 	if (fullscreen)
 	{
 		GetWindowRect(hwnd, &windowed_rect);
@@ -420,6 +420,7 @@ void Graphics::OnSizeChanged(HWND hWnd, UINT64 width, UINT height)
 	{
 		framebufferDimensions.cx = static_cast<LONG>(width);
 		framebufferDimensions.cy = static_cast<LONG>(height);
+		isWindowResizing = true;
 
 		feelingSize = static_cast<float>(framebufferDimensions.cx) / 1920.0f;
 
@@ -428,26 +429,12 @@ void Graphics::OnSizeChanged(HWND hWnd, UINT64 width, UINT height)
 			return;
 		}
 
-		//aspect_ratio = static_cast<float>(framebuffer_dimensions.cx) / static_cast<float>(framebuffer_dimensions.cy);
-
-		// Release all objects that hold shader resource views here.
-
+		isWindowResizing = false;
 		SceneManager::GetInstance()->OnSizeChange();
-
-
-#ifdef ENABLE_DIRECT2D
-		//d2d_device_context.Reset();
-#endif
 
 		Microsoft::WRL::ComPtr<IDXGIFactory6> dxgi_factory6;
 		hr = swap_chain->GetParent(IID_PPV_ARGS(dxgi_factory6.GetAddressOf()));
 		_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
 		CreateSwapChain(hWnd, dxgi_factory6.Get());
-
-#ifdef ENABLE_DIRECT2D
-		CreateDirect2dObjects();
-#endif
-
-
 	}
 }

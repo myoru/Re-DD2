@@ -3,10 +3,12 @@
 #include <iostream>
 #include <fstream>
 #include "Json.h"
-
+#include "CharacterAction.h"
 #include "FacialSet.h"
 
-class Character
+class CharacterAction;
+
+class Character : public std::enable_shared_from_this<Character>
 {
 public:
 	Character() = default;
@@ -14,9 +16,15 @@ public:
 	~Character() {}
 
 	void Initialize(int a_vectorSize, int a_facialIndex = -1);
-	void ToolUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewLeftTop, DirectX::XMFLOAT2 a_reviewSize);
-	void ToolRender(BasePoint a_basePoint, DirectX::XMFLOAT4 a_color = { 1.0f,1.0f,1.0f,1.0f });
+	void Update(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewLeftTop, DirectX::XMFLOAT2 a_reviewSize);
+	void Render(BasePoint a_basePoint, DirectX::XMFLOAT4 a_color = { 1.0f,1.0f,1.0f,1.0f });
 	void ToolOutLineRender(BasePoint a_basePoint, DirectX::XMFLOAT4 a_color = { 1.0f,1.0f,1.0f,1.0f });
+	void AddAction(int a_actionIndex);
+	void ActionsEnter();
+	bool ActionsExecute(float a_elapsedTime);
+	void ActionsExit();
+	void StartSlideshow();
+	void EndSlideShow();
 
 	std::shared_ptr<Sprite> GetFacial(int a_keyIndex);
 	std::shared_ptr<Sprite> GetFacial(std::string a_key);
@@ -31,7 +39,8 @@ public:
 			CEREAL_NVP(name),
 			CEREAL_NVP(facialStr),
 			CEREAL_NVP(normalizePosition),
-			CEREAL_NVP(normalizeSize)
+			CEREAL_NVP(normalizeSize),
+			CEREAL_NVP(m_actions)
 		);
 	}
 
@@ -44,4 +53,5 @@ public:
 	DirectX::XMFLOAT2 position = {};
 	DirectX::XMFLOAT2 normalizeSize = { 0.3f,0.3f };
 	DirectX::XMFLOAT2 size = {};
+	std::vector<std::shared_ptr<CharacterAction>> m_actions;
 };

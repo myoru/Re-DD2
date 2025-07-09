@@ -70,21 +70,23 @@ public:
 			break;
 		case WM_CREATE:
 			break;
-//		case WM_KEYDOWN://ここの処理でESCを押すとウィンドウが落ちる
-////#if _DEBUG
-//			if (wparam == VK_ESCAPE)
-//			{
-//				PostMessage(hwnd, WM_CLOSE, 0, 0);
-//			}
-//			break;
-////#endif
+			//		case WM_KEYDOWN://ここの処理でESCを押すとウィンドウが落ちる
+			////#if _DEBUG
+			//			if (wparam == VK_ESCAPE)
+			//			{
+			//				PostMessage(hwnd, WM_CLOSE, 0, 0);
+			//			}
+			//			break;
+			////#endif
 		case WM_MOUSEWHEEL:
 			Input::Instance().GetMouse().SetWheel(GET_WHEEL_DELTA_WPARAM(wparam));
 			break;
 		case WM_ENTERSIZEMOVE:
+			graphics.SetIsWindowResizing(true);
 			tictoc.Stop();
 			break;
 		case WM_EXITSIZEMOVE:
+			graphics.SetIsWindowResizing(false);
 			tictoc.Start();
 			break;
 		case WM_SIZE:

@@ -7,17 +7,18 @@
 class Chapter
 {
 public:
-	Chapter()
-	{
-		m_slides.emplace_back(Slide());
-		m_currentSlide = &m_slides[m_currentSlideIndex];
-	}
+	Chapter();
 	~Chapter() {}
 
-	void Update(float a_elapsedTime);
+	bool Update(float a_elapsedTime);
 	void ToolUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize);
-	void Render();
+	void CharactersUpdate(float a_elapsedTime);
+	void ToolCharactersUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize);
+	void StartSlideshow();
+	void SlideshowRender();
+	void EndSlideshowRender();
 	void ToolRender(DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize, bool a_isFullReview);
+	void EndSlideShow();
 
 	std::vector<Slide>& GetSlides() { return m_slides; }
 
@@ -49,4 +50,6 @@ public:
 	std::vector<std::unique_ptr<SignBoard>> m_signBoards; //テキストウィンドウ用ポインタ変数
 	//float m_textTimer = 0.0f; //テキスト送りに使うタイマー(int型にcastして使う)
 	bool m_textReadEndFlag = false;
+
+	std::unique_ptr<SignBoard> m_slideshowEndSignboars;
 };

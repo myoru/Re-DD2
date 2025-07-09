@@ -23,14 +23,14 @@ public:
 		Trailing,
 	};
 
-	bool Update(const wchar_t* a_text, int a_drawableTextLen);
+	void Update(const wchar_t* a_text, int a_drawableTextLen);
 	void Begin();
-	void Render(XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize,
-		TextAlignment a_textAlignment = TextAlignment::Leading, float a_lineSpace = 0.0f, FXMVECTOR a_textColor = Colors::White, float a_scale = 1.0f);
+	/*void Render(XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize,
+		TextAlignment a_textAlignment = TextAlignment::Leading, float a_lineSpace = 0.0f, FXMVECTOR a_textColor = Colors::White, float a_scale = 1.0f);*/
 	void ToolRender(XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize, TextAlignment a_textAlignment = TextAlignment::Leading, float a_lineSpace = 0.0f,
 		float a_rotation = 0.0f, FXMVECTOR a_textColor = Colors::White, float a_scale = 1.0f, bool a_fullScreenTestFlag = false);
-	void ToolRender2(std::wstring a_text, XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize, TextAlignment a_textAlignment = TextAlignment::Leading, float a_lineSpace = 0.0f,
-		float a_rotation = 0.0f, FXMVECTOR a_textColor = Colors::White, float a_scale = 1.0f, bool a_fullScreenTestFlag = false);
+	void Render(std::string a_text, XMFLOAT2 a_drawStartPosition, XMFLOAT2 a_drawableAreaLeftTopPosition, XMFLOAT2 a_drawableAreaSize,
+		TextAlignment a_textAlignment = TextAlignment::Leading, float a_lineSpace = 0.0f, FXMVECTOR a_textColor = Colors::White, float a_scale = 1.0f);
 	void End();
 
 	XMFLOAT2 GetFontSize() { return m_fontSize; }

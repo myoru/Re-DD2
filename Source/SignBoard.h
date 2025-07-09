@@ -15,7 +15,9 @@ public:
 	SignBoard(ID3D11Device* a_device, ID3D11DeviceContext* a_deviceContext, std::string a_jsonFileName);
 	~SignBoard();
 
-	bool Update(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition = { 0.0f,0.0f }, DirectX::XMFLOAT2 a_screenSize = { -1.0f,-1.0f });
+	void Update(float a_elapsedTime);
+	void ToolUpdate(float a_elapsedTime, char* a_textBuffer, int a_drawableTextLen, DirectX::XMFLOAT2 a_screenLeftTopPosition = { 0.0f,0.0f }, DirectX::XMFLOAT2 a_screenSize = { -1.0f,-1.0f });
+	void Render(FXMVECTOR a_textColor = Colors::White);
 	void BoardRender();
 	void TextRender(bool a_fullscreen, FXMVECTOR a_textColor = Colors::Red);
 	void ToolRender(bool a_fullscreen, FXMVECTOR a_textColor = Colors::White);
@@ -31,6 +33,7 @@ public:
 	{
 		std::string boardFilePath{};							//ボードに使う画像のパス(相対)
 		std::string fontFilePath{};								//テキストに使うフォントのパス(相対)
+		std::string text{};										//描画するテキスト
 
 		DirectX::XMFLOAT2 boardPosition{};						//スクリーン空間
 		DirectX::XMFLOAT2 boardLocalPosition{ 0.5f,0.5f };		//スクリーンサイズに対して何割の位置であるか(X成分が0.7fなら横軸の位置は画面の横幅を7:3で分割する位置)
@@ -41,7 +44,7 @@ public:
 		DirectX::XMFLOAT2 textDrawableAreaPosition{};								//スクリーン空間
 		DirectX::XMFLOAT2 textDrawableAreaLocalPosition{ 0.5f,0.5f };				//ボードサイズに対して何割の位置であるか(X成分が0.7fなら横軸の位置はボードの横幅を7:3で分割する位置)
 		DirectX::XMFLOAT2 textDrawableAreaSize{};									//スクリーン空間
-		DirectX::XMFLOAT2 textDrawableAreaLocalSize{ 0.9f,0.9f };						//ボードサイズに対して何割の大きさであるか(X成分が0.7fなら横幅はボードの横幅の大きさに0.7fかけた大きさ)
+		DirectX::XMFLOAT2 textDrawableAreaLocalSize{ 0.9f,0.9f };					//ボードサイズに対して何割の大きさであるか(X成分が0.7fなら横幅はボードの横幅の大きさに0.7fかけた大きさ)
 
 		DirectX::XMFLOAT2 textDrawStartPosition = {};						//スクリーン空間
 		DirectX::XMFLOAT2 textDrawStartLocalPosition = { 0.5f,0.5f };		//テキスト描画可能エリアのサイズに対して何割の位置であるか(X成分が0.7fなら横軸の位置はテキスト描画可能エリアの横幅を7:3で分割する位置)

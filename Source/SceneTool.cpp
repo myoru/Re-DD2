@@ -9,7 +9,8 @@
 #include "Input.h"
 #include "StringConvert.h"
 #include "AllFacialSet.h"
-#include "Actions.h"
+#include "SlideActions.h"
+#include "CharacterActions.h"
 #include "SceneManager.h"
 #include "SceneLoading.h"
 #include "Options.h"
@@ -26,12 +27,12 @@ constexpr int sc_i(T value)
 
 void SceneTool::Initialize()
 {
-	Graphics& _graphics = Graphics::Instance();
-	ID3D11Device* _device = _graphics.GetDevice();
-	ID3D11DeviceContext* _deviceContext = _graphics.GetDeviceContext();
 	using SeparateType = ScreenSeparateLine::SeparateType;
-	auto _allFacIns = AllFacialSet::GetInstance();
-	auto _allFacialSet = _allFacIns->GetAllFacialSet();
+	Graphics& _graphics = Graphics::Instance(); //RenderingStateなどを管理しているGraphicsのインスタンス取得
+	ID3D11Device* _device = _graphics.GetDevice(); //Device取得
+	ID3D11DeviceContext* _deviceContext = _graphics.GetDeviceContext(); //DeviceContext取得
+	auto _allFacIns = AllFacialSet::GetInstance(); //シングルトン化されている全表情差分のインスタンス取得
+	auto _allFacialSet = _allFacIns->GetAllFacialSet(); //全表情差分のリスト取得
 
 	//Scene識別インデックス設定
 	Scene::SetIndex(sc_i(Scene::Index::Event));
@@ -39,20 +40,24 @@ void SceneTool::Initialize()
 	////定数バッファ
 	m_cb_fade->data.Initialize(5.0f, 1.0f, 1, 1, 0);
 
+	//スプライトをロード
 	m_spriteBox.emplace_back(std::make_unique<Sprite>(nullptr, BasePoint::LeftTop));
 	m_spriteBox.emplace_back(std::make_unique<Sprite>(L".\\Data\\Sprite\\Number.png"));
 
+	//矩形UI初期化
 	m_rectUIs["LTriangle"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\SlideTriangle.png");
 	m_rectUIs["RTriangle"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\SlideTriangle.png");
 	m_rectUIs["Add"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\Add.png", BasePoint::RightTop);
 	m_rectUIs["DustBox"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\DustBox.png", BasePoint::RightBottom);
 
+	//レビュー画面のパラメーター初期化
 	m_reviewScreenPos = { (screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) + (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) / 2.0f),
 		(screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]) / 2.0f };
 	m_reviewScreenAspectRate = m_reviewScreenNormalSize.y / m_reviewScreenNormalSize.x;
 	m_reviewScreenSize.x = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) * 0.9f;
 	m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
 
+	//チャプター初期化
 	m_chapter = std::make_unique<Chapter>();
 
 #if 1
@@ -77,6 +82,11 @@ void SceneTool::Initialize()
 			_character->facialSet = _facialSetItr->second;
 			//facialIndexに値を入れる(facialStrから値を取得)
 			_character->facialIndex = _character->GetKeyIndex();
+
+			for (auto& _charaAction : _character->m_actions)
+			{
+				_charaAction->Initialize();
+			}
 		}
 		if (_slide.m_backSprFilePath.size())
 		{
@@ -119,45 +129,49 @@ void SceneTool::Update(float a_elapsedTime)
 	//モード切り替え
 	ModeChange();
 
-	//分割線用のパラメーター更新
-	m_eventWindowRate = (1.0f - CharactersWindowRate) / 3.0f;
-	m_charactersWindowWidth = screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) * CharactersWindowRate - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f;
-	m_eventWindowWidth = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) - m_charactersWindowWidth) / 3.0f;
-	m_eventWindowDrawStartPos.x = screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
-	m_eventWindowDrawStartPos.y = screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
-	m_slideWindowHeight = screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
+	//編集モードの時のみ
+	if (m_mode == Mode::Edit)
+	{
+		//分割線用のパラメーター更新
+		m_eventWindowRate = (1.0f - CharactersWindowRate) / 3.0f;
+		m_charactersWindowWidth = screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) * CharactersWindowRate - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f;
+		m_eventWindowWidth = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)]) - m_charactersWindowWidth) / 3.0f;
+		m_eventWindowDrawStartPos.x = screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f + m_charactersWindowWidth;
+		m_eventWindowDrawStartPos.y = screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f;
+		m_slideWindowHeight = screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)]);
+	}
 
 	//レビュー画面パラメーター更新
 	ReviewBoardUpdate();
 	//矩形UIパラメーター更新
 	RectUIUpdate(a_elapsedTime);
-
 	//スライドジャンプ用UIのパラメーター更新
 	SlideJumpUpdate();
-	//マウスとスライドジャンプ用UIの当り判定
-	SlideJumpHitCheck(a_elapsedTime);
 
 	//ギズモが操作されていなければ、矩形UIとマウスの当り判定チェック
-	if (!m_usingGuizmo)
+	if (!m_usingGuizmo && !_graphics.IsWindowResizing())
 	{
+		//マウスと分割線の当り判定を行う
+		m_screenSeparateLine.MouseHitCheck();
+		//マウスと矩形UIとの当り判定を行う
 		RectUIHitCheck();
+		//マウスとスライドジャンプ用UIの当り判定
+		SlideJumpHitCheck(a_elapsedTime);
 	}
 
 	//chapterのTool用のUpdateを呼ぶ
 	switch (m_mode)
 	{
-	case SceneTool::Mode::Edit:
-	case SceneTool::Mode::Check:
+	case SceneTool::Mode::Edit: //編集モード
 		m_chapter->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		break;
-	case SceneTool::Mode::Slideshow:
-		m_chapter->Update(a_elapsedTime);
+	case SceneTool::Mode::Slideshow: //スライドショーモード
+		if (!m_chapter->Update(a_elapsedTime))
+		{
+			m_chapter->EndSlideShow();
+			m_mode = Mode::EndSlideShow;
+		}
 		break;
-	}
-
-	for (auto _action : m_chapter->m_currentSlide->m_actions)
-	{
-		_action->Excute(a_elapsedTime);
 	}
 }
 
@@ -166,7 +180,7 @@ void SceneTool::ReviewBoardUpdate()
 	Graphics& _graphics = Graphics::Instance();
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
-	//最大スケールでレビュー画面が表示されていないなら
+	//編集モードの時のみ
 	if (m_mode == Mode::Edit)
 	{
 		m_screenSeparateLine.LineMove();//分割線を動かす
@@ -193,7 +207,7 @@ void SceneTool::ReviewBoardUpdate()
 	}
 	//横のサイズから決めて縦のサイズは画面のアスペクト比を用いて計算
 	{
-		//最大スケールでレビュー画面が表示されていないなら
+		//編集モードの時のみ
 		if (m_mode == Mode::Edit)
 		{
 			m_reviewScreenSize.x = (screenSize.x * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)])) * m_reviewOffsetScale;
@@ -210,45 +224,15 @@ void SceneTool::ReviewBoardUpdate()
 				m_reviewScreenRightBottomPos = CalcSquareRightBottomPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
 			}
 		}
-		else
-		{
-			m_reviewScreenSize.x = screenSize.x;
-			m_reviewScreenSize.y = m_reviewScreenSize.x * m_reviewScreenAspectRate;
-			m_reviewScreenLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
-			m_reviewScreenRightBottomPos = CalcSquareRightBottomPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
-			//もし、縦のサイズが大きすぎたら、
-			if (m_reviewScreenLeftTopPos.y < 0.0f)
-			{
-				//縦のサイズを補正してからそれに対応する横のサイズを画面のアスペクト比を用いて計算
-				m_reviewScreenSize.y = screenSize.y;
-				m_reviewScreenSize.x = m_reviewScreenSize.y / m_reviewScreenAspectRate;
-				m_reviewScreenLeftTopPos = CalcSquareLeftTopPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
-				m_reviewScreenRightBottomPos = CalcSquareRightBottomPosition(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize);
-			}
-		}
 
+		//レビュー画面を描画しているスペース全体のサイズを取得
 		m_blackSpaceSize.x = screenSize.x - (m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f);
 		m_blackSpaceSize.y = (m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)].y - m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f);
+		//レビュー画面を描画しているスペース全体からレビュー画面のサイズを引いた余白の大きさ取得
 		m_remainingBlackSpaceSize.x = m_reviewScreenLeftTopPos.x - (m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f);
 		m_remainingBlackSpaceSize.y = m_reviewScreenLeftTopPos.y;
 	}
 }
-
-//void SceneTool::CharactersUpdate(float a_elapsedTime)
-//{
-//	if (m_chapter && m_chapter->m_currentSlide->m_characters.size())
-//	{
-//		for (auto& _slide : m_chapter->GetSlides())
-//		{
-//			_slide.DeleteCharacter();
-//		}
-//
-//		for (int i = 0, iEnd = m_chapter->m_currentSlide->m_characters.size(); i < iEnd; i++)
-//		{
-//			m_chapter->m_currentSlide->m_characters[i]->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
-//		}
-//	}
-//}
 
 void SceneTool::RectUIUpdate(float a_elapsedTime)
 {
@@ -288,6 +272,7 @@ void SceneTool::RectUIUpdate(float a_elapsedTime)
 
 	for (const auto& [_, _rectUI] : m_rectUIs)
 	{
+		//矩形UIのパラメーター更新
 		_rectUI->Update(a_elapsedTime);
 	}
 }
@@ -296,30 +281,30 @@ void SceneTool::RectUIHitCheck()
 {
 	Mouse& _mouse = Input::Instance().GetMouse();
 
-	//マウスと分割線の当り判定を行う
-	m_screenSeparateLine.MouseHitCheck();
-	if (m_rectUIs["LTriangle"]->MouseHitCheck(_mouse))
+	if (m_rectUIs["LTriangle"]->MouseHitCheck(_mouse)) //左矢印をダブルクリックしていたら
 	{
-		if (m_chapter->m_currentSlideIndex > 0 && _mouse.GetButtonDown() & Mouse::BTN_LEFT)
+		//1つ前のスライドへ移動(選択中のスライドが１枚目(０枚目)のスライドでなければ)
+		if (m_chapter->m_currentSlideIndex > 0)
 		{
 			m_chapter->m_currentSlideIndex--;
 		}
 	}
-	if (m_rectUIs["RTriangle"]->MouseHitCheck(_mouse))
+	if (m_rectUIs["RTriangle"]->MouseHitCheck(_mouse)) //右矢印をダブルクリックしていたら
 	{
-		if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
+		//1つ次のスライドへ移動
+		m_chapter->m_currentSlideIndex++;
+		//移動前のスライドがもし、最後のスライドだった場合
+		if (m_chapter->GetSlides().size() == m_chapter->m_currentSlideIndex)
 		{
-			m_chapter->m_currentSlideIndex++;
-			if (m_chapter->GetSlides().size() == m_chapter->m_currentSlideIndex)
-			{
-				m_chapter->GetSlides().emplace_back(Slide());
-			}
+			//スライド一枚追加
+			m_chapter->GetSlides().emplace_back(Slide());
 		}
 	}
-	if (m_chapter->GetSlides().size() >= 2)
+	if (m_chapter->GetSlides().size() >= 2) //スライドが１枚以下の時はデリートできないように
 	{
-		if (m_rectUIs["DustBox"]->MouseHitCheck(_mouse))
+		if (m_rectUIs["DustBox"]->MouseHitCheck(_mouse)) //ゴミ箱アイコンをダブルクリックしていたら
 		{
+			//選択中のスライドを削除
 			m_chapter->GetSlides().erase(m_chapter->GetSlides().begin() + m_chapter->m_currentSlideIndex);
 			if (m_chapter->m_currentSlideIndex >= m_chapter->GetSlides().size())
 			{
@@ -327,24 +312,29 @@ void SceneTool::RectUIHitCheck()
 			}
 		}
 	}
-	if (m_rectUIs["Add"]->MouseHitCheck(_mouse))
+	if (m_rectUIs["Add"]->MouseHitCheck(_mouse)) //＋(プラス)アイコンをダブルクリックしていたら
 	{
+		//スライド１枚追加
 		m_chapter->GetSlides().insert(m_chapter->GetSlides().begin() + m_chapter->m_currentSlideIndex + 1, Slide());
 		m_chapter->m_currentSlideIndex++;
 	}
 
+	//現在選択中のスライドを m_currentSlideIndex を基に更新
 	m_chapter->m_currentSlide = &m_chapter->GetSlides()[m_chapter->m_currentSlideIndex];
 }
 
 void SceneTool::SlideJumpUpdate()
 {
+	//スライドジャンプ用UI全体のサイズ＆位置更新
 	m_slideJumpUISize.x = m_reviewScreenSize.x * 0.9f;
 	m_slideJumpUISize.y = m_remainingBlackSpaceSize.y * m_slideJumpUIHeightRate;
 	if (m_slideJumpUISize.y > screenSize.y * 0.1f)
 	{
-		m_slideJumpUISize.y = screenSize.y * 0.1f;
+		m_slideJumpUISize.y = screenSize.y * 0.1f; //高さ制限
 	}
+	//複数の表示するかジャンプ用UIの1つ目(最も左から)の描画位置
 	slideJumpUIDrawStartPos = { m_reviewScreenPos.x - (m_slideJumpUISize.x / (m_chapter->GetSlides().size() * 2)) * (m_chapter->GetSlides().size() - 1), m_slideJumpUISize.y / 2.0f };
+	//複数の表示するかジャンプ用UI１つ分の横幅を計算
 	m_slideJumpUIDrawWidth = m_slideJumpUISize.x / m_chapter->GetSlides().size();
 }
 
@@ -352,6 +342,7 @@ void SceneTool::SlideJumpHitCheck(float a_elapsedTime)
 {
 	Mouse& _mouse = Input::Instance().GetMouse();
 	m_slideClickTimer -= a_elapsedTime;
+	//左上、右下の座標取得
 	XMFLOAT2 _leftTopPos = { m_reviewScreenPos.x - m_slideJumpUISize.x / 2.0f ,slideJumpUIDrawStartPos.y - m_slideJumpUISize.y / 2.0f };
 	XMFLOAT2 _rightBottomPos = { m_reviewScreenPos.x + m_slideJumpUISize.x / 2.0f ,slideJumpUIDrawStartPos.y + m_slideJumpUISize.y / 2.0f };
 	if (_mouse.GetPositionX() < _leftTopPos.x || _rightBottomPos.x < _mouse.GetPositionX() ||
@@ -453,9 +444,22 @@ void SceneTool::Render(float elapsedTime)
 		_rendering_state->SetDepthStencilState(_immediate_context, DEPTH_STENCIL_STATE::ZT_OFF_ZW_OFF);
 		_rendering_state->SetRasterizerState(_immediate_context, RASTERIZER_STATE::CULL_NONE);
 
-		m_spriteBox.at(sc_i(SpriteKind::White))->Render(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize, 0.0f, m_reviewScreenColor);
 
-		m_chapter->ToolRender(m_reviewScreenLeftTopPos, m_reviewScreenSize, m_mode != Mode::Edit ? true : false);
+		switch (m_mode)
+		{
+		case SceneTool::Mode::Edit:
+			m_spriteBox.at(sc_i(SpriteKind::White))->Render(BasePoint::Center, m_reviewScreenPos, m_reviewScreenSize, 0.0f, m_reviewScreenColor);
+			m_chapter->ToolRender(m_reviewScreenLeftTopPos, m_reviewScreenSize, m_mode != Mode::Edit ? true : false);
+			break;
+		case SceneTool::Mode::Slideshow:
+			m_chapter->SlideshowRender();
+			break;
+		case SceneTool::Mode::EndSlideShow:
+			m_chapter->EndSlideshowRender();
+			break;
+		default:
+			break;
+		}
 
 		/*if (m_lines.size())
 		{
@@ -470,7 +474,7 @@ void SceneTool::Render(float elapsedTime)
 
 		//ページ数描画
 		{
-			if (m_chapter && m_chapter->GetSlides().size())
+			if (m_chapter && m_chapter->GetSlides().size() && m_mode != Mode::EndSlideShow)
 			{
 				int _slideNum = m_chapter->m_currentSlideIndex + 1;//今のページ数
 				int _tenRate = 1;//今のページ数が何桁かをこの変数に入れる
@@ -478,7 +482,16 @@ void SceneTool::Render(float elapsedTime)
 				{
 					_tenRate++;
 				}
-				XMFLOAT2 _slideNumPos = m_reviewScreenLeftTopPos;
+				XMFLOAT2 _slideNumPos;
+				switch (m_mode)
+				{
+				case SceneTool::Mode::Slideshow:
+					_slideNumPos = { 0.0f,0.0f };
+					break;
+				default:
+					_slideNumPos = m_reviewScreenLeftTopPos;
+					break;
+				}
 				XMFLOAT2 _slideNumSize = { m_reviewScreenSize.x / 25.0f,0.0f }; _slideNumSize.y = _slideNumSize.x;
 				_slideNumSize.x /= _tenRate;//ページ数の1桁当たりの描画サイズを桁数に合わせて調整
 				_slideNumPos.x += _slideNumSize.x * (_tenRate - 1);
@@ -558,7 +571,6 @@ void SceneTool::Render(float elapsedTime)
 				m_slideJumpUIDrawWidth * slideJumpUIScaleRate, m_slideJumpUISize.y * slideJumpUIScaleRate, 0.0f, { i == m_chapter->m_currentSlideIndex ? 1.0f : 0.5f ,i == m_chapter->m_currentSlideIndex ? 1.0f : 0.5f,i == m_chapter->m_currentSlideIndex ? 1.0f : 0.5f,1.0f });
 		}
 	}
-
 }
 
 #ifdef USE_IMGUI
@@ -569,14 +581,24 @@ void SceneTool::ImGuiRender()
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
-	//最大スケールでレビュー画面が表示されているなら終わり
-	if (m_mode != Mode::Edit)return;
-
-	ImGuizmoRender();
-	ImGuiAssetsWindow(ImGui::GetWindowSize().x * 0.85f);
-	ImGuiSlideWindow();
-	ImGuiOperationWindow();
-	//Scene::CommonImGuiRender(_windowPos, _windowSize, _flags);
+	switch (m_mode)
+	{
+	case SceneTool::Mode::Edit:
+		ImGuizmoRender();
+		ImGuiAssetsWindow(ImGui::GetWindowSize().x * 0.85f);
+		ImGuiSlideWindow();
+		ImGuiOperationWindow();
+		//Scene::CommonImGuiRender(_windowPos, _windowSize, _flags);
+		break;
+	case SceneTool::Mode::Slideshow:
+		ImGuiSlideshowWindow();
+		break;
+	case SceneTool::Mode::EndSlideShow:
+		ImGuiEndSlideshowWindow();
+		break;
+	default:
+		break;
+	}
 }
 
 void SceneTool::ImGuiOperationWindow()
@@ -587,220 +609,254 @@ void SceneTool::ImGuiOperationWindow()
 	XMFLOAT2 _windowPos = { 0.0f,screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] + m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
 	XMFLOAT2 _windowSize = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
 		screenSize.y * (1.0f - m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)]) - m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
-	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse; //ウィンドウを動かせない＆閉じないようにする
 
 	ImGui::SetNextWindowPos(ImVec2(_windowPos.x, _windowPos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(_windowSize.x, _windowSize.y), ImGuiCond_Always);
 	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
 	ImGui::Begin("Operation", nullptr, _flags);
-
-	if (m_chapter->m_currentSlide->m_characters.size())
 	{
-		ImGui::SliderInt("Character Index", &m_chapter->m_currentSlide->m_characterIndex, 0, m_chapter->m_currentSlide->m_characters.size() - 1);
-
-		const auto _character = m_chapter->m_currentSlide->m_characters.at(m_chapter->m_currentSlide->m_characterIndex);
-		Sprite* _characterSprite = _character->facialSet->GetFacial(_character->facialIndex).get();
-		float _imageLimitSize = screenSize.y * 0.1f;
-		ImVec2 _imageSize = { _imageLimitSize, 0.0f };
-		_imageSize.y = _imageSize.x * _characterSprite->GetAspectRation();
-		if (_imageSize.y > _imageLimitSize)
+		if (m_chapter->m_currentSlide->m_characters.size())
 		{
-			_imageSize.y = _imageLimitSize;
-			_imageSize.x = _imageSize.y / _characterSprite->GetAspectRation();
-		}
-		ImGui::Image(_characterSprite->GetShaderResource(), _imageSize);
-
-		auto& _selectSlide = m_chapter->GetSlides()[m_chapter->m_currentSlideIndex];
-
-		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.5f, 0.2f, 0.5f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.2f, 0.9f, 0.2f, 0.7f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.2f, 0.9f, 0.2f, 0.5f)); //色変更
-		if (ImGui::CollapsingHeader("Layer", ImGuiTreeNodeFlags_DefaultOpen))
-		{
-			for (int i = _selectSlide.m_characters.size() - 1; i >= 0; i--)
+			if (ImGui::TreeNodeEx("Character", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				ImGui::PushID(i);
+				////操作キャラクターの変更(SliderIntによるIndex操作)
+				//ImGui::SliderInt("Character Index", &m_chapter->m_currentSlide->m_characterIndex, 0, m_chapter->m_currentSlide->m_characters.size() - 1);
 
-				// グループで囲んで1行に画像＋名前を表示
-				ImGui::BeginGroup();
-
-				// Selectable 領域の始まり
-				if (ImGui::Selectable(_selectSlide.m_characters[i]->name.c_str()))
+				//選択中のキャラクター表示
 				{
-					m_chapter->m_currentSlide->m_characterIndex = i;
-				}
-				ImGui::SameLine();
-
-				auto& _character = m_chapter->m_currentSlide->m_characters.at(i);
-
-				int _index = _character->facialIndex;
-				Sprite* _facialSprite = _character->facialSet->GetFacial(_index).get();
-				ImVec2 _imageSize = ImGui::GetItemRectSize();
-				_imageSize.x = _imageSize.y / _facialSprite->GetAspectRation();
-				ImGui::Image(_facialSprite->GetShaderResource(), _imageSize);
-
-				ImGui::EndGroup();
-
-				// ドラッグ元
-				if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
-				{
-					ImGui::SetDragDropPayload("DND_ITEM", &i, sizeof(int));
-					ImGui::Text("%s", _selectSlide.m_characters[i]->name.c_str());
-					ImGui::EndDragDropSource();
-				}
-
-				// ドロップ先
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ITEM"))
+					const auto _character = m_chapter->m_currentSlide->m_characters.at(m_chapter->m_currentSlide->m_characterIndex);
+					Sprite* _characterSprite = _character->facialSet->GetFacial(_character->facialIndex).get();
+					float _imageLimitSize = screenSize.y * 0.05f;
+					ImVec2 _imageSize = { _imageLimitSize, 0.0f };
+					_imageSize.y = _imageSize.x * _characterSprite->GetAspectRation();
+					if (_imageSize.y > _imageLimitSize)
 					{
-						int payloadIndex = *(const int*)payload->Data;
-
-						if (payloadIndex != i)
-						{
-							std::swap(_selectSlide.m_characters[i], _selectSlide.m_characters[payloadIndex]);
-
-							if (m_chapter->m_currentSlide->m_characterIndex == payloadIndex)
-								m_chapter->m_currentSlide->m_characterIndex = i;
-							else if (m_chapter->m_currentSlide->m_characterIndex == i)
-								m_chapter->m_currentSlide->m_characterIndex = payloadIndex;
-						}
+						_imageSize.y = _imageLimitSize;
+						_imageSize.x = _imageSize.y / _characterSprite->GetAspectRation();
 					}
-					ImGui::EndDragDropTarget();
+					ImGui::Image(_characterSprite->GetShaderResource(), _imageSize);
 				}
 
-				ImGui::PopID();
-			}
-			ImGui::Separator();
-			ImGui::Separator();
-			ImGui::Separator();
-		}
-		ImGui::PopStyleColor(3);	//色変更終了処理
-	}
+				ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.5f, 0.2f, 0.5f)); //色変更
+				ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.2f, 0.9f, 0.2f, 0.7f)); //色変更
+				ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.2f, 0.9f, 0.2f, 0.5f)); //色変更
+				//レイヤーによる選択キャラクターの変更＆Zオーダーの操作
+				if (ImGui::CollapsingHeader("Layer", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					for (int i = m_chapter->m_currentSlide->m_characters.size() - 1; i >= 0; i--)
+					{
+						ImGui::PushID(i);
 
-	if (ImGui::TreeNodeEx("Guozmo", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		if (ImGui::TreeNodeEx("Guizmo Mode", ImGuiTreeNodeFlags_DefaultOpen))
+						// グループで囲んで1行に画像＋名前を表示
+						ImGui::BeginGroup();
+
+						// Selectable 領域の始まり
+						if (ImGui::Selectable(m_chapter->m_currentSlide->m_characters[i]->name.c_str()))
+						{
+							m_chapter->m_currentSlide->m_characterIndex = i;
+						}
+						ImGui::SameLine();
+
+						auto& _character = m_chapter->m_currentSlide->m_characters.at(i);
+
+						int _index = _character->facialIndex;
+						Sprite* _facialSprite = _character->facialSet->GetFacial(_index).get();
+						ImVec2 _imageSize = ImGui::GetItemRectSize();
+						_imageSize.x = _imageSize.y / _facialSprite->GetAspectRation();
+						ImGui::Image(_facialSprite->GetShaderResource(), _imageSize);
+
+						ImGui::EndGroup();
+
+						// ドラッグ元
+						if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+						{
+							ImGui::SetDragDropPayload("DND_ITEM", &i, sizeof(int));
+							ImGui::Text("%s", m_chapter->m_currentSlide->m_characters[i]->name.c_str());
+							ImGui::EndDragDropSource();
+						}
+
+						// ドロップ先
+						if (ImGui::BeginDragDropTarget())
+						{
+							if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ITEM"))
+							{
+								int payloadIndex = *(const int*)payload->Data;
+
+								if (payloadIndex != i)
+								{
+									std::swap(m_chapter->m_currentSlide->m_characters[i], m_chapter->m_currentSlide->m_characters[payloadIndex]);
+
+									if (m_chapter->m_currentSlide->m_characterIndex == payloadIndex)
+										m_chapter->m_currentSlide->m_characterIndex = i;
+									else if (m_chapter->m_currentSlide->m_characterIndex == i)
+										m_chapter->m_currentSlide->m_characterIndex = payloadIndex;
+								}
+							}
+							ImGui::EndDragDropTarget();
+						}
+
+						ImGui::PopID();
+					}
+					ImGui::Separator();
+					ImGui::Separator();
+					ImGui::Separator();
+				}
+				ImGui::PopStyleColor(3);	//色変更終了処理
+				ImGui::TreePop();
+			}
+		}
+
+		//ImGuizmoのモード変更
+		if (ImGui::TreeNodeEx("Guozmo", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::RadioButton("TRANSLATE", &m_guizmoType, sc_i(ImGuizmo::OPERATION::TRANSLATE));
-			ImGui::SameLine();
-			ImGui::RadioButton("SCALE", &m_guizmoType, sc_i(ImGuizmo::OPERATION::SCALE));
+			ImGui::RadioButton("Character", &m_guizmoOperateObject, sc_i(GuizmoOperateObject::Character)); ImGui::SameLine();
+			ImGui::RadioButton("CharacterAction", &m_guizmoOperateObject, sc_i(GuizmoOperateObject::CharacterAction));
+			if (m_guizmoOperateObject == sc_i(GuizmoOperateObject::CharacterAction) && m_chapter->m_currentSlide->m_characters.size())
+			{
+				auto& _character = m_chapter->m_currentSlide->m_characters[m_chapter->m_currentSlide->m_characterIndex];
+				if (_character->m_actions.size())
+				{
+					if (selectActionIndex >= _character->m_actions.size())
+					{
+						selectActionIndex = _character->m_actions.size() - 1;
+					}
+					ImGui::SliderInt("selectAction", &selectActionIndex, 0, _character->m_actions.size() - 1);
+					_character->m_actions[selectActionIndex]->OperateData();
+				}
+			}
+			if (ImGui::TreeNodeEx("Guizmo Mode", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::RadioButton("TRANSLATE", &m_guizmoType, sc_i(ImGuizmo::OPERATION::TRANSLATE));
+				ImGui::SameLine();
+				ImGui::RadioButton("SCALE", &m_guizmoType, sc_i(ImGuizmo::OPERATION::SCALE));
+				ImGui::TreePop();
+			}
 			ImGui::TreePop();
 		}
-		ImGui::TreePop();
-	}
 
-	/*if (ImGui::TreeNodeEx("Lines", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		if (ImGui::Button("Add Line"))
+		if (ImGui::TreeNodeEx("SlideActions", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			m_lines.emplace_back();
-		}
-		if (m_lines.size())
-		{
-			if (ImGui::Button("Delete Line"))
+			for (auto& _action : m_chapter->m_currentSlide->m_actions)
 			{
-				m_lines.erase(m_lines.begin());
+				_action->OperateData();
+			}
+			ImGui::TreePop();
+		}
+
+		/*if (ImGui::TreeNodeEx("Lines", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::Button("Add Line"))
+			{
+				m_lines.emplace_back();
+			}
+			if (m_lines.size())
+			{
+				if (ImGui::Button("Delete Line"))
+				{
+					m_lines.erase(m_lines.begin());
+				}
+
+				ImGui::InputFloat("Wall Distance", &lineNormalizeWallDistance, 0.01f);
+				lineNormalizeWallDistance = std::clamp(lineNormalizeWallDistance, 0.0f, 1.0f);
+				ImGui::InputFloat("Distance", &lineNormalizeDistance, 0.01f);
+				lineNormalizeDistance = std::clamp(lineNormalizeDistance, 0.0f, 1.0f);
 			}
 
-			ImGui::InputFloat("Wall Distance", &lineNormalizeWallDistance, 0.01f);
-			lineNormalizeWallDistance = std::clamp(lineNormalizeWallDistance, 0.0f, 1.0f);
-			ImGui::InputFloat("Distance", &lineNormalizeDistance, 0.01f);
-			lineNormalizeDistance = std::clamp(lineNormalizeDistance, 0.0f, 1.0f);
+			ImGui::TreePop();
 		}
-
-		ImGui::TreePop();
+		ImGui::Separator();*/
 	}
-	ImGui::Separator();*/
-
-	int _i = 0;
-	for (auto _action : m_chapter->m_currentSlide->m_actions)
-	{
-		std::string _label = "##" + std::to_string(_i);
-		ImGui::InputInt(_label.c_str(), &_action->m_data.index); ImGui::SameLine();
-		ImGui::Checkbox(_label.c_str(), &_action->m_data.isEnd);
-	}
-	/*ImGui::InputInt("m_touchSlideIndex", &m_touchSlideIndex);
-	ImGui::InputInt("m_testNum", &m_testNum);
-	ImGui::InputFloat("m_slideClickTimer", &m_slideClickTimer);*/
-
-	ImGui::InputFloat("m_textTimer", &m_chapter->m_currentSlide->m_textTimer);
-	int _textReadSpeed = sc_i(Options::GetInstance()->GetTextReadSpeed());
-	ImGui::SliderInt("textReadSpeed", &_textReadSpeed, 0, sc_i(Options::TextReadSpeed::Max) - 1);
-	Options::GetInstance()->SetTextReadSpeed(_textReadSpeed);
-
 	ImGui::End();
 	ImGui::PopStyleColor(2);
+}
+
+void SceneTool::ImGuiSlideshowWindow()
+{
+	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always); //ウィンドウの位置決定
+	//ウィンドウの大きさ決定(分割線を基に計算)
+	XMFLOAT2 _windowSize = { screenSize.x * 0.2f,screenSize.y * 0.4f};
+	ImGui::SetNextWindowSize(ImVec2(_windowSize.x, _windowSize.y), ImGuiCond_Always);
+	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse; //ウィンドウを動かせない＆閉じないようにする
+	//カラーリング決定(灰色ベース)
+	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.3f, 0.3f, 0.3f, 1.0f)); //非アクティブ時
+	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.3f, 0.6f, 0.95f, 1.0f)); //アクティブ時
+	ImGui::Begin("Slideshow", nullptr, _flags);
+	{
+		int _mode = sc_i(m_mode);
+		ImGui::InputInt("Mode", &_mode);
+
+		int _slideState = sc_i(m_chapter->m_currentSlide->m_state);
+		ImGui::InputInt("Slide State", &_slideState);
+		ImGui::InputFloat("Main Timer", &m_chapter->m_currentSlide->m_mainTimer);
+		ImGui::InputFloat("Text Read Timer", &m_chapter->m_currentSlide->m_textReadTimer);
+		ImGui::InputFloat("Read End Timer", &m_chapter->m_currentSlide->m_readEndTimer);
+	}
+	ImGui::End();
+	ImGui::PopStyleColor(2);
+}
+
+void SceneTool::ImGuiEndSlideshowWindow()
+{
 }
 
 //Assetウィンドウ用のImGui描画関数
 void SceneTool::ImGuiAssetsWindow(float a_buttonWidth)
 {
 	Graphics& _graphics = Graphics::Instance();
-
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
-	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always); //ウィンドウの位置決定
+	//ウィンドウの大きさ決定(分割線を基に計算)
 	XMFLOAT2 _windowSize = { screenSize.x * m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f,
 		screenSize.y * m_screenSeparateLine.rate[sc_i(SeparateType::LeftHorizontal)] - m_screenSeparateLine.lineSize[sc_i(SeparateType::LeftHorizontal)].y * 0.5f };
 	ImGui::SetNextWindowSize(ImVec2(_windowSize.x, _windowSize.y), ImGuiCond_Always);
-	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.7f, 0.7f, 0.4f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.9f, 0.9f, 0.0f, 1.0f));
+	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse; //ウィンドウを動かせない＆閉じないようにする
+	//カラーリング決定(灰色ベース)
+	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.3f, 0.3f, 0.3f, 1.0f)); //非アクティブ時
+	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.3f, 0.6f, 0.95f, 1.0f)); //アクティブ時
 	ImGui::Begin("Asset", nullptr, _flags);
 	{
+		//カラーリング決定(赤色ベース)
 		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.6f, 0.3f, 0.3f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f)); //色変更
 		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.8f, 0.4f, 0.4f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.8f, 0.4f, 0.4f, 1.0f)); //色変更
 		if (ImGui::CollapsingHeader("TextWindow", ImGuiTreeNodeFlags_DefaultOpen))
 		{
+			//テキストウィンドウ用ImGui描画位置
 			ImGuiTextWindow(_windowSize.x * 0.85f);
 			ImGui::Separator();
 		}
 		ImGui::PopStyleColor(3);	//色変更終了処理
 
-		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.3f, 0.5f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.3f, 0.3f, 0.8f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.3f, 0.3f, 0.8f, 1.0f)); //色変更
+		//カラーリング決定(青色ベース)
+		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.3f, 0.6f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.3f, 0.3f, 1.0f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.4f, 0.4f, 0.8f, 1.0f)); //色変更
 		if (ImGui::CollapsingHeader("All Character Window", ImGuiTreeNodeFlags_DefaultOpen))
 		{
+			//全登場キャラクター用ImGui描画位置
 			ImGuiAllCharactersWindow(_windowSize.x * 0.4f);
 			ImGui::Separator();
 		}
 		ImGui::PopStyleColor(3);	//色変更終了処理
 
-		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.5f, 0.0f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.3f, 0.8f, 0.3f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f)); //色変更
+		//カラーリング決定(緑色ベース)
+		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.6f, 0.3f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.25f, 0.9f, 0.25f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.4f, 0.8f, 0.4f, 1.0f)); //色変更
 		if (ImGui::CollapsingHeader("Back Sprite Window", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			if (ImGui::Button("Select TextWindow Sprite", ImVec2(a_buttonWidth, 0.0f)))
-			{
-				//filter(選択できるファイル形式)設定
-				static const char* _filter = "Image Files (*.png;*.jpeg;*.jpg)\0*.png;*.jpeg;*.jpg\0""All Files (*.*)\0*.*\0\0";
-				char _selectImageName[256] = {}; //選択したファイルのパスを保存する
-				HWND _hWnd = Graphics::Instance().GetHWND();
-				//開くファイルを選択する(選択し終えたら、_result = DialogResult::OK になる)
-				DialogResult _result = Dialog::OpenFileName(_selectImageName, sizeof(_selectImageName), _filter, "開きたい.png または.jpegファイルを選択してください", _hWnd);
-				//ファイルが選択されていたら
-				if (_result == DialogResult::OK)
-				{
-					wchar_t wideBuffer[256]; ////選択したファイルのパスを保存する(wchar_t <--- char)
-					MultiByteToWideChar(CP_ACP, 0, _selectImageName, -1, wideBuffer, 256); //(wchar_t <--- char)
-					//絶対パスを相対パス化
-					auto _spriteFilePath = std::filesystem::relative(wideBuffer);
-					m_chapter->m_currentSlide->m_backSpr = std::make_shared<Sprite>(_spriteFilePath.wstring().c_str());
-					m_chapter->m_currentSlide->m_backSprFilePath = WideToUtf8(_spriteFilePath.wstring());
-				}
-				ImGui::Separator();
-			}
+			ImGuiBackSpriteWindow(_windowSize.x * 0.4f);
+			ImGui::Separator();
 		}
 		ImGui::PopStyleColor(3);	//色変更終了処理
 
-		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.3f, 0.0f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.8f, 0.8f, 0.0f, 1.0f)); //色変更
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 0.2f, 1.0f)); //色変更
+		//カラーリング決定(黄色ベース)
+		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.6f, 0.6f, 0.3f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.9f, 0.25f, 1.0f)); //色変更
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.8f, 0.8f, 0.4f, 1.0f)); //色変更
 		if (ImGui::CollapsingHeader("Actions", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGuiActionsWindow(_windowSize.x * 0.4f);
@@ -861,6 +917,11 @@ void SceneTool::ImGuiTextWindow(float a_buttonWidth)
 				ImGui::TreePop();
 			}
 		}
+
+		int _textReadSpeed = sc_i(Options::GetInstance()->GetTextReadSpeed());
+		ImGui::SliderInt("textReadSpeed", &_textReadSpeed, 0, sc_i(Options::TextReadSpeed::Max) - 1);
+		Options::GetInstance()->SetTextReadSpeed(_textReadSpeed);
+
 		ImGui::Separator();
 	}
 
@@ -950,39 +1011,53 @@ void SceneTool::ImGuiAllCharactersWindow(float a_buttonWidth)
 	}
 }
 
+void SceneTool::ImGuiBackSpriteWindow(float a_buttonWidth)
+{
+	if (ImGui::Button("Select BackSprite", ImVec2(a_buttonWidth, 0.0f)))
+	{
+		//filter(選択できるファイル形式)設定
+		static const char* _filter = "Image Files (*.png;*.jpeg;*.jpg)\0*.png;*.jpeg;*.jpg\0""All Files (*.*)\0*.*\0\0";
+		char _selectImageName[256] = {}; //選択したファイルのパスを保存する
+		HWND _hWnd = Graphics::Instance().GetHWND();
+		//開くファイルを選択する(選択し終えたら、_result = DialogResult::OK になる)
+		DialogResult _result = Dialog::OpenFileName(_selectImageName, sizeof(_selectImageName), _filter, "開きたい.png または.jpegファイルを選択してください", _hWnd);
+		//ファイルが選択されていたら
+		if (_result == DialogResult::OK)
+		{
+			wchar_t wideBuffer[256]; ////選択したファイルのパスを保存する(wchar_t <--- char)
+			MultiByteToWideChar(CP_ACP, 0, _selectImageName, -1, wideBuffer, 256); //(wchar_t <--- char)
+			//絶対パスを相対パス化
+			auto _spriteFilePath = std::filesystem::relative(wideBuffer);
+			m_chapter->m_currentSlide->m_backSpr = std::make_shared<Sprite>(_spriteFilePath.wstring().c_str());
+			m_chapter->m_currentSlide->m_backSprFilePath = WideToUtf8(_spriteFilePath.wstring());
+		}
+	}
+	if (m_chapter->m_currentSlideIndex > 0 && m_chapter->GetSlides()[m_chapter->m_currentSlideIndex - 1].m_backSpr)
+	{
+		ImGui::SameLine();
+		if (ImGui::Button("Copy Previous Slides BackSprite"))
+		{
+			m_chapter->m_currentSlide->m_backSpr = m_chapter->GetSlides()[m_chapter->m_currentSlideIndex - 1].m_backSpr;
+		}
+	}
+	ImGui::Separator();
+}
+
 void SceneTool::ImGuiActionsWindow(float a_buttonWidth)
 {
-	std::vector<const char*> _cstrItems;
+	std::vector<const char*> _cStrItems;
 	static int _currentItem = 0;
 
 	// 一時的に const char* の配列を作成（ImGui::Combo 用）
-	for (const auto& str : actionStrList)
+	for (const auto& str : slideActionStrList)
 	{
-		_cstrItems.push_back(str.c_str());
+		_cStrItems.push_back(str.c_str());
 	}
-	ImGui::Combo("Action", &_currentItem, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
+	ImGui::Combo("SlidesAction", &_currentItem, _cStrItems.data(), static_cast<int>(_cStrItems.size()));
 
 	if (ImGui::Button("Add Action", ImVec2(a_buttonWidth, 0.0f)))
 	{
-		switch (_currentItem)
-		{
-		case 0:
-			m_chapter->m_currentSlide->m_actions.emplace_back(std::make_shared<Vibe>(Action::Data{ "Vibe" }));
-			break;
-		case 1:
-		{
-			//m_chapter->m_currentSlide->m_actions.emplace_back(std::make_shared<MusicStart>(Action::Data{ "MusicStart",0 }));
-			for (int i = 0; i < 3; ++i)
-			{
-				auto& _newAction{ m_chapter->m_currentSlide->m_actions.emplace_back(std::make_shared<MusicStart>(Action::Data{ "MusicStart",i })) };
-				_newAction->Enter();
-			}
-		}
-		break;
-		case 2:
-			m_chapter->m_currentSlide->m_actions.emplace_back(std::make_shared<AllMusicStop>(Action::Data{ "MusicStop",0 }));
-			break;
-		}
+		m_chapter->m_currentSlide->AddAction(_currentItem);
 	}
 }
 
@@ -990,7 +1065,7 @@ void SceneTool::ImGuiSlideWindow()
 {
 	ImGuiCharactersWindow();
 	ImGuiEnterWindow();
-	ImGuiExcuteWindow();
+	ImGuiExecuteWindow();
 	ImGuiExitWindow();
 }
 
@@ -1020,30 +1095,50 @@ void SceneTool::ImGuiCharactersWindow()
 				{
 					auto& _character = m_chapter->m_currentSlide->m_characters.at(i);
 
-					_facialsKeys.clear();
-					_cstrItems.clear();
-					for (auto& _key : _character->facialSet->keys)
+					//表情差分
 					{
-						_facialsKeys.emplace_back(_key);	// ← ここで _facialsKeys が文字列の実体を保持
-					}
-					for (const auto& str : _facialsKeys)
-					{
-						_cstrItems.push_back(str.c_str());	// ← 安全にポインタを取得
+						_facialsKeys.clear();
+						_cstrItems.clear();
+						for (auto& _key : _character->facialSet->keys)
+						{
+							_facialsKeys.emplace_back(_key);	// ← ここで _facialsKeys が文字列の実体を保持
+						}
+						for (const auto& str : _facialsKeys)
+						{
+							_cstrItems.push_back(str.c_str());	// ← 安全にポインタを取得
+						}
+
+						std::string _comboLabel = "Facial##" + std::to_string(i);
+						ImGui::Combo(_comboLabel.c_str(), &_character->facialIndex, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
+						_character->facialStr = _character->facialSet->GetKey(_character->facialIndex);
+
+						int _index = _character->facialIndex;
+						Sprite* _facialSprite = _character->facialSet->GetFacial(_index).get();
+						ImVec2 _imageSize = { _imageLimitSize.x, _imageLimitSize.x * _facialSprite->GetAspectRation() };
+						if (_imageSize.y > _imageLimitSize.y)
+						{
+							_imageSize.y = _imageLimitSize.y;
+							_imageSize.x = _imageSize.y / _facialSprite->GetAspectRation();
+						}
+						ImGui::Image(_facialSprite->GetShaderResource(), _imageSize);
 					}
 
-					std::string _comboLabel = "Facial##" + std::to_string(i);
-					ImGui::Combo(_comboLabel.c_str(), &_character->facialIndex, _cstrItems.data(), static_cast<int>(_cstrItems.size()));
-					_character->facialStr = _character->facialSet->GetKey(_character->facialIndex);
-
-					int _index = _character->facialIndex;
-					Sprite* _facialSprite = _character->facialSet->GetFacial(_index).get();
-					ImVec2 _imageSize = { _imageLimitSize.x, _imageLimitSize.x * _facialSprite->GetAspectRation() };
-					if (_imageSize.y > _imageLimitSize.y)
+					//アクション
 					{
-						_imageSize.y = _imageLimitSize.y;
-						_imageSize.x = _imageSize.y / _facialSprite->GetAspectRation();
+						std::vector<const char*> _cStrItems;
+						static int _currentItem = 0;
+
+						// 一時的に const char* の配列を作成（ImGui::Combo 用）
+						for (const auto& str : characterActionStrList)
+						{
+							_cStrItems.push_back(str.c_str());
+						}
+						ImGui::Combo("CharctersAction", &_currentItem, _cStrItems.data(), static_cast<int>(_cStrItems.size()));
+						if (ImGui::Button("Add Action"))
+						{
+							_character->AddAction(_currentItem);
+						}
 					}
-					ImGui::Image(_facialSprite->GetShaderResource(), _imageSize);
 
 					std::string _deleteButtonLabel = "Delete Character##" + std::to_string(i);
 					if (ImGui::Button(_deleteButtonLabel.c_str(), ImVec2(_spriteSizeX, 0.0f)))
@@ -1071,15 +1166,18 @@ void SceneTool::ImGuiEnterWindow()
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.5f, 0.15f, 0.15f, 1.0f));
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.7f, 0.3f, 0.3f, 1.0f));
-	ImGui::Begin("Enter Window", nullptr, _flags);
+	ImGui::Begin("SlideActions Enter Window", nullptr, _flags);
 	{
-
+		for (auto& _action : m_chapter->m_currentSlide->m_actions)
+		{
+			_action->ShowEnter();
+		}
 	}
 	ImGui::End();
 	ImGui::PopStyleColor(2);
 }
 
-void SceneTool::ImGuiExcuteWindow()
+void SceneTool::ImGuiExecuteWindow()
 {
 	Graphics& _graphics = Graphics::Instance();
 
@@ -1091,7 +1189,7 @@ void SceneTool::ImGuiExcuteWindow()
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.15f, 0.5f, 0.15f, 1.0f));
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.3f, 0.7f, 0.3f, 1.0f));
-	ImGui::Begin("Excute Window", nullptr, _flags);
+	ImGui::Begin("SlideActions Execute Window", nullptr, _flags);
 	{
 	}
 	ImGui::End();
@@ -1110,9 +1208,12 @@ void SceneTool::ImGuiExitWindow()
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.15f, 0.15f, 0.5f, 1.0f));
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.3f, 0.3f, 0.7f, 1.0f));
-	ImGui::Begin("Exit Window", nullptr, _flags);
+	ImGui::Begin("SlideActions Exit Window", nullptr, _flags);
 	{
-
+		for (auto& _action : m_chapter->m_currentSlide->m_actions)
+		{
+			_action->ShowExit();
+		}
 	}
 	ImGui::End();
 	ImGui::PopStyleColor(2);
@@ -1122,106 +1223,113 @@ void SceneTool::ImGuizmoRender()
 {
 	Graphics& _graphics = Graphics::Instance();
 
+	ImGuizmo::SetOrthographic(true);
+	ImVec2 _guizmoTaskPos = { m_reviewScreenLeftTopPos.x,m_reviewScreenLeftTopPos.y };
+	ImVec2 _guizmoTaskSize = { m_reviewScreenSize.x,m_reviewScreenSize.y };
+	ImGuizmo::SetRect(_guizmoTaskPos.x, _guizmoTaskPos.y, _guizmoTaskSize.x, _guizmoTaskSize.y);
+
+	DirectX::XMStoreFloat4x4((XMFLOAT4X4*)m_guizmoViewMat, XMMatrixIdentity());
+	DirectX::XMStoreFloat4x4((XMFLOAT4X4*)m_guizmoProjMat, XMMatrixOrthographicOffCenterLH(0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f));
+
+	switch (static_cast<GuizmoOperateObject>(m_guizmoOperateObject))
+	{
+	case SceneTool::GuizmoOperateObject::Character:
+		CharacterGuizmo();
+		break;
+	case SceneTool::GuizmoOperateObject::CharacterAction:
+		CharacterActionsGuizmo();
+		break;
+	}
+}
+void SceneTool::CharacterGuizmo()
+{
 	if (!m_chapter->m_currentSlide->m_characters.size())return;
 
-
 	//Guizmoの作業領域
-	for (int i = 0; i <= m_testNum; i++)
+	int _selectCharacterIndex = m_chapter->m_currentSlide->m_characterIndex;
+	XMFLOAT4X4 _guizmoTransform;
+	DirectX::XMMATRIX _selectS{}, _selectR{}, _selectT{};
+	_selectR = DirectX::XMMatrixRotationZ(0.0f);
+	_selectS = DirectX::XMMatrixScaling(m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x, m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y, 1.0f);
+	_selectT = DirectX::XMMatrixTranslation(m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x, m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y, 0.0f);
+
+	DirectX::XMStoreFloat4x4(&_guizmoTransform, _selectS * _selectR * _selectT);
+
+	//行列用の変数
+	XMMATRIX view = XMMatrixIdentity();
+	XMMATRIX proj = XMMatrixOrthographicOffCenterLH(0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+
+	float view_mat[16], proj_mat[16];
+	DirectX::XMStoreFloat4x4((XMFLOAT4X4*)view_mat, XMMatrixIdentity());
+	DirectX::XMStoreFloat4x4((XMFLOAT4X4*)proj_mat, XMMatrixOrthographicOffCenterLH(0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f));
+
+	ImGuizmo::Manipulate(m_guizmoViewMat, m_guizmoProjMat, static_cast<ImGuizmo::OPERATION>(m_guizmoType), ImGuizmo::LOCAL, &_guizmoTransform._11);
+	if (ImGuizmo::IsUsing())
 	{
-		int _selectCharacterIndex = m_chapter->m_currentSlide->m_characterIndex + i;
-		ImVec2 _guizmoTaskPos = {}, _guizmoTaskSize = {};
-		ImGuizmo::SetOrthographic(true);
-		XMFLOAT4X4 _guizmoTransform;
-		DirectX::XMMATRIX _selectS{}, _selectR{}, _selectT{};
-		_selectR = DirectX::XMMatrixRotationZ(0.0f);
+		XMVECTOR _scale, _rotation, _translation;
+		XMMATRIX _newTransform = XMLoadFloat4x4(&_guizmoTransform);
+		XMMatrixDecompose(&_scale, &_rotation, &_translation, _newTransform);
 
-		_guizmoTaskPos = { m_reviewScreenLeftTopPos.x,m_reviewScreenLeftTopPos.y };
-		_guizmoTaskSize = { m_reviewScreenSize.x,m_reviewScreenSize.y };
-		_selectS = DirectX::XMMatrixScaling(m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x, m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y, 1.0f);
-		_selectT = DirectX::XMMatrixTranslation(m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x, m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y, 0.0f);
+		XMStoreFloat2(&m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize, _scale);
+		m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x = std::clamp(
+			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x, FLT_EPSILON, 5.0f);
+		m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y = std::clamp(
+			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y, FLT_EPSILON, 5.0f);
 
-		ImGuizmo::SetRect(_guizmoTaskPos.x, _guizmoTaskPos.y, _guizmoTaskSize.x, _guizmoTaskSize.y);
-		DirectX::XMStoreFloat4x4(&_guizmoTransform, _selectS * _selectR * _selectT);
-
-		//行列用の変数
-		XMMATRIX view = XMMatrixIdentity();
-		XMMATRIX proj = XMMatrixOrthographicOffCenterLH(0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f);
-
-		float view_mat[16], proj_mat[16];
-		DirectX::XMStoreFloat4x4((XMFLOAT4X4*)view_mat, view);
-		DirectX::XMStoreFloat4x4((XMFLOAT4X4*)proj_mat, proj);
-
-		ImGuizmo::Manipulate(view_mat, proj_mat, static_cast<ImGuizmo::OPERATION>(m_guizmoType), ImGuizmo::LOCAL, &_guizmoTransform._11);
-		if (ImGuizmo::IsUsing())
-		{
-			XMVECTOR _scale, _rotation, _translation;
-			XMMATRIX _newTransform = XMLoadFloat4x4(&_guizmoTransform);
-			XMMatrixDecompose(&_scale, &_rotation, &_translation, _newTransform);
-
-			XMStoreFloat2(&m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize, _scale);
-			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x = std::clamp(
-				m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.x, FLT_EPSILON, 5.0f);
-			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y = std::clamp(
-				m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizeSize.y, FLT_EPSILON, 5.0f);
-
-			XMStoreFloat2(&m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition, _translation);
-			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x = std::clamp(
-				m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x, FLT_EPSILON, 1.0f);
-			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y = std::clamp(
-				m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y, FLT_EPSILON, 1.0f);
-		}
+		XMStoreFloat2(&m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition, _translation);
+		m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x = std::clamp(
+			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x, FLT_EPSILON, 1.0f);
+		m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y = std::clamp(
+			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y, FLT_EPSILON, 1.0f);
 	}
 }
 
-//void SceneTool::TextWindowEditor(float a_buttonWidth)
-//{
-//	Graphics& _graphics = Graphics::Instance();
-//
-//	using SeparateType = ScreenSeparateLine::SeparateType;
-//
-//	//m_textWindowがnullptrじゃなかったら
-//	if (m_chapter->m_signBoards.size())
-//	{
-//		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 1.0f));
-//		//Resetボタン(押すとtextWindowポインタをnullptrにする)
-//		if (ImGui::Button("Reset Text Window", ImVec2(a_buttonWidth, 0.0f)))
-//		{
-//			m_chapter->m_signBoards.clear();
-//		}
-//		ImGui::PopStyleColor(1);
-//	}
-//
-//	if (ImGui::Button("Select TextWindow Json File", ImVec2(a_buttonWidth, 0.0f)))
-//	{
-//		static const char* filter = "Model Files(*.json;)\0*.json;\0All Files(*.*)\0*.*;\0\0";
-//
-//		char _selectFileName[256] = { 0 };
-//		HWND _hWnd = Graphics::Instance().GetHWND();
-//		DialogResult _result = Dialog::OpenFileName(_selectFileName, sizeof(_selectFileName), filter, nullptr, _hWnd);
-//		if (_result == DialogResult::OK)
-//		{
-//			wchar_t _wideBuffer[256]; ////選択したファイルのパスを保存する(wchar_t <--- char)
-//			MultiByteToWideChar(CP_ACP, 0, _selectFileName, -1, _wideBuffer, 256); //(wchar_t <--- char)
-//			//絶対パスを相対パス化
-//			auto _jsonFilePath = std::filesystem::relative(_wideBuffer);
-//			m_chapter->m_signBoards.emplace_back(std::make_unique<SignBoard>(_device, _deviceContext, _jsonFilePath.string()));
-//			m_chapter->m_signBoards.at(m_chapter->m_signBoards.size() - 1)->jElements.text = "こんばんは\nこんばんは\nおはよう";
-//		}
-//	}
-//	ImGui::Separator(); ImGui::Separator(); ImGui::Separator();
-//
-//#ifdef _DEBUG
-//	if (ImGui::CollapsingHeader("Debug Element", ImGuiTreeNodeFlags_DefaultOpen))
-//	{
-//
-//	}
-//#endif
-//}
+void SceneTool::CharacterActionsGuizmo()
+{
+	if (!m_chapter->m_currentSlide->m_characters.size())return;
+
+	//Guizmoの作業領域
+	auto& _character = m_chapter->m_currentSlide->m_characters[m_chapter->m_currentSlide->m_characterIndex];
+	if (!_character->m_actions.size()) return;
+
+	auto& _selectAction = _character->m_actions[selectActionIndex];
+	if (!_selectAction->useImGui) return;
+
+	XMFLOAT4X4 _guizmoTransform;
+	DirectX::XMMATRIX _selectS{}, _selectR{}, _selectT{};
+
+	_selectS = _selectAction->GuizmoScale();
+	_selectR = _selectAction->GuizmoRotate();
+	_selectT = _selectAction->GuizmoTranslate();
+	DirectX::XMStoreFloat4x4(&_guizmoTransform, _selectS * _selectR * _selectT);
+
+	//行列用の変数
+	XMMATRIX view = XMMatrixIdentity();
+	XMMATRIX proj = XMMatrixOrthographicOffCenterLH(0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+
+	DirectX::XMStoreFloat4x4((XMFLOAT4X4*)m_guizmoViewMat, view);
+	DirectX::XMStoreFloat4x4((XMFLOAT4X4*)m_guizmoProjMat, proj);
+
+	ImGuizmo::Manipulate(m_guizmoViewMat, m_guizmoProjMat, static_cast<ImGuizmo::OPERATION>(m_guizmoType), ImGuizmo::LOCAL, &_guizmoTransform._11);
+	if (ImGuizmo::IsUsing())
+	{
+		XMMATRIX _newTransform = XMLoadFloat4x4(&_guizmoTransform);
+		_selectAction->GuizmoDecompose(_newTransform);
+	}
+}
+
 #endif // USE_IMGUI
 
 void SceneTool::OnSizeChange()
 {
-	Graphics& _graphics = Graphics::Instance();
+	for (auto& _flag : m_screenSeparateLine.lineHoldFlag)
+	{
+		_flag = false;
+	}
+	for (auto& _flag : m_screenSeparateLine.lineTouchFlag)
+	{
+		_flag = false;
+	}
 }
 
 void SceneTool::ModeChange()
@@ -1235,9 +1343,11 @@ void SceneTool::ModeChange()
 	switch (m_mode)
 	{
 	case SceneTool::Mode::Edit:
+		//F5を押すと最大スケールでレビュー画面で表示される
 		if (_keyboard.GetKeyInput(Keyboard::F5, Keyboard::DownMoment))
 		{
 			m_mode = Mode::Slideshow;
+			m_chapter->StartSlideshow();
 			//CTRLキーが押されていたら、最初のスライドから再生
 			if (_keyboard.GetKeyInput(Keyboard::CTRL, Keyboard::Down))
 			{
@@ -1247,35 +1357,46 @@ void SceneTool::ModeChange()
 			else
 			{
 				m_chapter->m_currentSlideIndex = 0;
+				m_chapter->m_currentSlide = &m_chapter->GetSlides()[m_chapter->m_currentSlideIndex];
+				m_chapter->m_currentSlide->ActionsEnter();
 			}
+
 		}
-		//F2を押すと最大スケールでレビュー画面で表示される
-		else if (_keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
-		{
-			m_mode = Mode::Check;
-			//最大表示前の分割パラメーターを保存しておく
-			for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
-			{
-				m_screenSeparateLine.beforeRate[i] = m_screenSeparateLine.rate[i];
-			}
-			m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] = 0.0f;
-			m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] = 1.0f;
-		}
+		////F2を押すと最大スケールでレビュー画面で表示される
+		//else if (_keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
+		//{
+		//	m_mode = Mode::Check;
+		//	//最大表示前の分割パラメーターを保存しておく
+		//	for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
+		//	{
+		//		m_screenSeparateLine.beforeRate[i] = m_screenSeparateLine.rate[i];
+		//	}
+		//	m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] = 0.0f;
+		//	m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] = 1.0f;
+		//}
 		break;
-	case SceneTool::Mode::Check:
-		if (_keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment) || _keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
-		{
-			m_mode = Mode::Edit;
-			//保存していたパラメーターに戻す
-			for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
-			{
-				m_screenSeparateLine.rate[i] = m_screenSeparateLine.beforeRate[i];
-			}
-		}
-		break;
+		//case SceneTool::Mode::Check:
+		//	if (_keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment) || _keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
+		//	{
+		//		m_mode = Mode::Edit;
+		//		//保存していたパラメーターに戻す
+		//		for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
+		//		{
+		//			m_screenSeparateLine.rate[i] = m_screenSeparateLine.beforeRate[i];
+		//		}
+		//	}
+		//	break;
 	case SceneTool::Mode::Slideshow:
 		if (_keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment) || _keyboard.GetKeyInput(Keyboard::F5, Keyboard::DownMoment))
 		{
+			m_chapter->EndSlideShow();
+			m_mode = Mode::Edit;
+		}
+		break;
+	case SceneTool::Mode::EndSlideShow:
+		if (_mouse.GetButtonDown() & Mouse::BTN_LEFT || _keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment) || _keyboard.GetKeyInput(Keyboard::F5, Keyboard::DownMoment))
+		{
+			m_chapter->EndSlideShow();
 			m_mode = Mode::Edit;
 		}
 		break;
@@ -1288,62 +1409,6 @@ void SceneTool::ModeChange()
 	}
 
 }
-
-
-//void SceneTool::MouseVsDustBox()
-//{
-//	Mouse& _mouse = Input::Instance().GetMouse();
-//
-//	XMFLOAT2 _leftTopPos = CalcSquareLeftTopPosition(BasePoint::RightBottom, m_dustBoxPos, m_dustBoxSize);
-//	XMFLOAT2 _rightBottomPos = CalcSquareRightBottomPosition(BasePoint::RightBottom, m_dustBoxPos, m_dustBoxSize);
-//	if (_mouse.GetPositionX() < _leftTopPos.x || _rightBottomPos.x < _mouse.GetPositionX() ||
-//		_mouse.GetPositionY() < _leftTopPos.y || _rightBottomPos.y < _mouse.GetPositionY())
-//	{
-//		m_dustBoxTouchFlag = false;
-//	}
-//	else
-//	{
-//		m_dustBoxTouchFlag = true;
-//	}
-//
-//	if (m_dustBoxTouchFlag)
-//	{
-//		if (m_chapter->GetSlides().size() > 1 && _mouse.GetButtonDown() & Mouse::BTN_LEFT)
-//		{
-//			m_chapter->GetSlides().erase(m_chapter->GetSlides().begin() + m_chapter->m_currentSlideIndex);
-//			if (m_chapter->m_currentSlideIndex >= m_chapter->GetSlides().size())
-//			{
-//				m_chapter->m_currentSlideIndex = m_chapter->GetSlides().size() - 1;
-//			}
-//		}
-//	}
-//}
-//
-//void SceneTool::MouseVsAddIcon()
-//{
-//	Mouse& _mouse = Input::Instance().GetMouse();
-//
-//	XMFLOAT2 _leftTopPos = CalcSquareLeftTopPosition(BasePoint::RightTop, m_addIconPos, m_addIconSize);
-//	XMFLOAT2 _rightBottomPos = CalcSquareRightBottomPosition(BasePoint::RightTop, m_addIconPos, m_addIconSize);
-//	if (_mouse.GetPositionX() < _leftTopPos.x || _rightBottomPos.x < _mouse.GetPositionX() ||
-//		_mouse.GetPositionY() < _leftTopPos.y || _rightBottomPos.y < _mouse.GetPositionY())
-//	{
-//		m_addIconTouchFlag = false;
-//	}
-//	else
-//	{
-//		m_addIconTouchFlag = true;
-//	}
-//
-//	if (m_addIconTouchFlag)
-//	{
-//		if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
-//		{
-//			m_chapter->GetSlides().insert(m_chapter->GetSlides().begin() + m_chapter->m_currentSlideIndex + 1, Slide());
-//			m_chapter->m_currentSlideIndex++;
-//		}
-//	}
-//}
 
 void SceneTool::ScreenSeparateLine::MouseHitCheck()
 {

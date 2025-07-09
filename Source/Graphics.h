@@ -72,7 +72,11 @@ public:
 	float GetFeelingSize() const { return feelingSize; }
 
 	//フルスクリーンの状況取得
-	bool IsFullscreen() { return fullscreen_mode; }
+	bool IsFullscreen() { return fullscreenMode; }
+
+	//ウィンドウサイズ変更フラグ
+	bool IsWindowResizing() { return isWindowResizing; }
+	void SetIsWindowResizing(bool a_isWindowResizing) { isWindowResizing = a_isWindowResizing; }
 
 	//ミューテックス取得
 	std::mutex& GetMutex() { return mutex; }
@@ -131,7 +135,8 @@ private:
 
 	std::unique_ptr<RenderingState> rendering_state;
 
-	bool fullscreen_mode;
+	bool fullscreenMode;
+	bool isWindowResizing;
 	RECT windowed_rect;
 	DWORD windowed_style;
 

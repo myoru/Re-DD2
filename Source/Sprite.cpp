@@ -138,42 +138,42 @@ void Sprite::Render(BasePoint basePoint,
 	float dx, float dy,
 	float dw, float dh,
 	float angle,
-	DirectX::XMFLOAT4 color)
+	DirectX::XMFLOAT4 color,bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, dw, dh, 0.0f, 0.0f,
 		static_cast<float>(texture2d_desc.Width), static_cast<float>(texture2d_desc.Height),
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, DirectX::XMFLOAT2 size,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, size.x, size.y, 0.0f, 0.0f,
 		static_cast<float>(texture2d_desc.Width), static_cast<float>(texture2d_desc.Height),
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	float dx, float dy, DirectX::XMFLOAT2 size,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, size.x, size.y, 0.0f, 0.0f,
 		static_cast<float>(texture2d_desc.Width), static_cast<float>(texture2d_desc.Height),
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, float dw, float dh,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, dw, dh, 0.0f, 0.0f,
 		static_cast<float>(texture2d_desc.Width), static_cast<float>(texture2d_desc.Height),
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 
-void Sprite::Render(BasePoint basePoint, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh, float angle, DirectX::XMFLOAT4 color)
+void Sprite::Render(BasePoint basePoint, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh, float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	ID3D11DeviceContext* _immediate_context = Graphics::Instance().GetDeviceContext();
 
@@ -300,6 +300,12 @@ void Sprite::Render(BasePoint basePoint, float dx, float dy, float dw, float dh,
 		break;
 	}
 
+	if (!a_rotateCenter)
+	{
+		center.x = dx;
+		center.y = dy;
+	}
+
 	//‰ñ“]ˆ—
 	Rotate(x0, y0, { center }, angle);
 	Rotate(x1, y1, { center }, angle);
@@ -363,7 +369,7 @@ void Sprite::Render(BasePoint basePoint, float dx, float dy, float dw, float dh,
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, DirectX::XMFLOAT2 size,
 	DirectX::XMFLOAT2 cutPos, DirectX::XMFLOAT2 cutSize,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, size.x, size.y,
 		cutPos.x, cutPos.y, cutSize.x, cutSize.y,
@@ -373,145 +379,145 @@ void Sprite::Render(BasePoint basePoint,
 void Sprite::Render(BasePoint basePoint,
 	float dx, float dy, DirectX::XMFLOAT2 size,
 	DirectX::XMFLOAT2 cutPos, DirectX::XMFLOAT2 cutSize,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, size.x, size.y,
 		cutPos.x, cutPos.y, cutSize.x, cutSize.y,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, float dw, float dh,
 	DirectX::XMFLOAT2 cutPos, DirectX::XMFLOAT2 cutSize,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, dw, dh,
 		cutPos.x, cutPos.y, cutSize.x, cutSize.y,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, DirectX::XMFLOAT2 size,
 	float sx, float sy, DirectX::XMFLOAT2 cutSize,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, size.x, size.y,
 		sx, sy, cutSize.x, cutSize.y,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, DirectX::XMFLOAT2 size,
 	DirectX::XMFLOAT2 cutPos, float sw, float sh,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, size.x, size.y,
 		cutPos.x, cutPos.y, sw, sh,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	float dx, float dy, float dw, float dh,
 	DirectX::XMFLOAT2 cutPos, DirectX::XMFLOAT2 cutSize,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, dw, dh,
 		cutPos.x, cutPos.y, cutSize.x, cutSize.y,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	float dx, float dy, DirectX::XMFLOAT2 size,
 	float sx, float sy, DirectX::XMFLOAT2 cutSize,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, size.x, size.y,
 		sx, sy, cutSize.x, cutSize.y,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	float dx, float dy, DirectX::XMFLOAT2 size,
 	DirectX::XMFLOAT2 cutPos, float sw, float sh,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, size.x, size.y,
 		cutPos.x, cutPos.y, sw, sh,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, float dw, float dh,
 	float sx, float sy, DirectX::XMFLOAT2 cutSize,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, dw, dh,
 		sx, sy, cutSize.x, cutSize.y,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, float dw, float dh,
 	DirectX::XMFLOAT2 cutPos, float sw, float sh,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, dw, dh,
 		cutPos.x, cutPos.y, sw, sh,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, DirectX::XMFLOAT2 size,
 	float sx, float sy, float sw, float sh,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, size.x, size.y,
 		sx, sy, sw, sh,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	float dx, float dy, float dw, float dh,
 	float sx, float sy, DirectX::XMFLOAT2 cutSize,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, dw, dh,
 		sx, sy, cutSize.x, cutSize.y,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	float dx, float dy, DirectX::XMFLOAT2 size,
 	float sx, float sy, float sw, float sh,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, size.x, size.y,
 		sx, sy, sw, sh,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	float dx, float dy, float dw, float dh,
 	DirectX::XMFLOAT2 cutPos, float sw, float sh,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, dx, dy, dw, dh,
 		cutPos.x, cutPos.y, sw, sh,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 void Sprite::Render(BasePoint basePoint,
 	DirectX::XMFLOAT2 pos, float dw, float dh,
 	float sx, float sy, float sw, float sh,
-	float angle, DirectX::XMFLOAT4 color)
+	float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	Render(basePoint, pos.x, pos.y, dw, dh,
 		sx, sy, sw, sh,
 		angle,
-		color);
+		color, a_rotateCenter);
 }
 
-void Sprite::Render(DirectX::XMFLOAT2 a_basePoint, DirectX::XMFLOAT2 pos, DirectX::XMFLOAT2 size, DirectX::XMFLOAT2 cutPos, DirectX::XMFLOAT2 cutSize, float angle, DirectX::XMFLOAT4 color)
+void Sprite::Render(DirectX::XMFLOAT2 a_basePoint, DirectX::XMFLOAT2 pos, DirectX::XMFLOAT2 size, DirectX::XMFLOAT2 cutPos, DirectX::XMFLOAT2 cutSize, float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	ID3D11DeviceContext* _immediate_context = Graphics::Instance().GetDeviceContext();
 
@@ -597,7 +603,7 @@ void Sprite::Render(DirectX::XMFLOAT2 a_basePoint, DirectX::XMFLOAT2 pos, Direct
 	_immediate_context->PSSetShaderResources(0, 1, srvs);
 }
 
-void Sprite::OutLineRender(BasePoint basePoint, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh, float angle, DirectX::XMFLOAT4 color)
+void Sprite::OutLineRender(BasePoint basePoint, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh, float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
 	ID3D11DeviceContext* _immediate_context = Graphics::Instance().GetDeviceContext();
 
@@ -724,6 +730,12 @@ void Sprite::OutLineRender(BasePoint basePoint, float dx, float dy, float dw, fl
 		break;
 	}
 
+	if (!a_rotateCenter)
+	{
+		center.x = dx;
+		center.y = dy;
+	}
+
 	//‰ñ“]ˆ—
 	Rotate(x0, y0, { center }, angle);
 	Rotate(x1, y1, { center }, angle);
@@ -784,9 +796,9 @@ void Sprite::OutLineRender(BasePoint basePoint, float dx, float dy, float dw, fl
 	_immediate_context->PSSetShaderResources(0, 1, srvs);
 }
 
-void Sprite::OutLineRender(BasePoint basePoint, float dx, float dy, float dw, float dh, float angle, DirectX::XMFLOAT4 color)
+void Sprite::OutLineRender(BasePoint basePoint, float dx, float dy, float dw, float dh, float angle, DirectX::XMFLOAT4 color, bool a_rotateCenter)
 {
-	OutLineRender(basePoint, dx, dy, dw, dh, 0.0f, 0.0f, textureWidth, textureHeight, angle, color);
+	OutLineRender(basePoint, dx, dy, dw, dh, 0.0f, 0.0f, textureWidth, textureHeight, angle, color, a_rotateCenter);
 }
 
 void Sprite::Rotate(float& x, float& y, DirectX::XMFLOAT2 center, float angle)
