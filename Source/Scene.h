@@ -108,7 +108,7 @@ struct FadeConstants
 	float m_fadeValue = 0.0f; // 現在のフェード値
 	int m_inOutFlag = 1;       // 1: in, 0: out
 	int m_isStart = 0;           // 1: 開始, 0: 未開始
-	int m_blackWhite = 0;	 // 1: Black, 0: White
+	int m_blackWhite = 0;	 // 1: Black, 0: White, -1: Clear
 
 	enum class Fade
 	{

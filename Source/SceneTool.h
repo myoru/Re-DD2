@@ -3,6 +3,8 @@
 #include "SignBoard.h"
 #include "Chapter.h"
 #include "RectUI.h"
+#include "Camera.h"
+#include "DrawContext.h"
 #include <unordered_map>
 
 
@@ -18,6 +20,7 @@ public:
 	void Finalize()override;
 	//更新処理
 	void Update(float elapsedTime)override; //メインの更新関数
+	void CharacterEditUpdate(float a_elapsedTime);
 	void ModeChange(); //モード切り替え関数
 	void ReviewBoardUpdate(); //レビュー画面の更新処理
 	void RectUIUpdate(float a_elapsedTime); //矩形UI更新処理
@@ -25,8 +28,10 @@ public:
 	void SlideJumpUpdate(); //スライドジャンプ用UIのパラメーター更新
 	void SlideJumpHitCheck(float a_elapsedTime); //マウスとスライドジャンプ用UIの当り判定
 	void LineUpdate();
+	DirectX::XMFLOAT2 SearchNearLinePos(Mouse& _mouse);
 	//描画処理
 	void Render(float elapsedTime)override;
+	void LineRender(DirectX::XMFLOAT2 a_reviewLeftTop, DirectX::XMFLOAT2 a_reviewSize);
 #ifdef USE_IMGUI
 	//ImGui描画関数
 	void ImGuiRender()override;
@@ -43,8 +48,14 @@ public:
 	void ImGuiSlideWindow();
 	void ImGuiCharactersWindow();
 	void ImGuiEnterWindow();
+	void ImGuiSlideActionsEnter();
+	void ImGuiCharacterActionsEnter();
 	void ImGuiExecuteWindow();
+	void ImGuiSlideActionsExecute();
+	void ImGuiCharacterActionsExecute();
 	void ImGuiExitWindow();
+	void ImGuiSlideActionsExit();
+	void ImGuiCharacterActionsExit();
 	//Guizmo関数
 	void ImGuizmoRender();
 	void CharacterGuizmo();
@@ -53,6 +64,9 @@ public:
 	//画面サイズ変更時に呼ばれる関数
 	void OnSizeChange()override;
 private:
+	Camera m_camera;
+	std::unique_ptr<ConstantBuffer<CameraConstants>> m_cb_camera;
+
 	//画面を４分割するための値
 	struct ScreenSeparateLine
 	{
@@ -92,7 +106,8 @@ private:
 	float m_eventWindowWidth = 0.0f; //EventWindow1つ辺りの横幅
 	DirectX::XMFLOAT2 m_eventWindowDrawStartPos = {}; //eventWindow(最も左)の描画開始位置
 	float m_slideWindowHeight = 0.0f; //SlideWindowの高さ
-	float m_reviewOffsetScale = 0.85f; //reviewScreenをどのくらいの割合で描画するか
+	const float m_reviewOffsetScaleMax = 0.85f; //reviewScreenをどのくらいの割合で描画するか
+	float m_reviewOffsetScale = m_reviewOffsetScaleMax; //reviewScreenをどのくらいの割合で描画するか
 	DirectX::XMFLOAT2 m_blackSpaceSize{}; //reviewScreenを描画するエリアのサイズ
 	DirectX::XMFLOAT2 m_remainingBlackSpaceSize{}; //reviewScreenを描画した後の黒い余白のサイズ
 
@@ -119,9 +134,12 @@ private:
 	float m_guizmoProjMat[16] = {};
 
 	//グリッド線用の変数
-	std::vector<float> m_lines; //線の配列
-	float lineNormalizeWallDistance = 0.1f; //0.0f ~ 1.0f
-	float lineNormalizeDistance = 0.1f;  //0.0f ~ 1.0f
+	std::vector<float> m_verticalLines; //縦線の配列
+	std::vector<float> m_horizontalLines; //横線の配列
+	float verticalLineNormalizeWallDistance = 0.1f; //0.0f ~ 1.0f
+	float horizontalLineNormalizeWallDistance = 0.1f; //0.0f ~ 1.0f
+	float verticalLineNormalizeDistance = 0.1f;  //0.0f ~ 1.0f
+	float horizontalLineNormalizeDistance = 0.1f;  //0.0f ~ 1.0f
 
 	std::unordered_map<std::string, std::unique_ptr<RectUI>> m_rectUIs; //当り判定が矩形のUI配列
 
@@ -136,6 +154,7 @@ private:
 		Edit, //編集
 		Slideshow, //スライドショー
 		EndSlideShow, //スライドショー終了
+		CharacterEdit, //キャラクターの個別編集
 	};
 
 	enum class GuizmoOperateObject
@@ -145,4 +164,6 @@ private:
 	};
 
 	Mode m_mode = Mode::Edit; //現在のモード
+
+	std::shared_ptr<Character> m_editCharacter = nullptr;
 };

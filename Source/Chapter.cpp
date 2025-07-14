@@ -70,7 +70,7 @@ bool Chapter::Update(float a_elapsedTime)
 	return true;
 }
 
-void Chapter::ToolUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize)
+void Chapter::EditUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize)
 {
 	Keyboard& _keyboard = Input::Instance().GeKeyboard();
 
@@ -86,6 +86,21 @@ void Chapter::ToolUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLe
 	for (auto& _signBoard : m_signBoards)
 	{
 		_signBoard->ToolUpdate(a_elapsedTime, m_currentSlide->m_inputBuffer, m_currentSlide->m_drawableTextLen, a_reviewScreenLeftTopPos, a_reviewScreenSize);
+	}
+}
+
+void Chapter::CharacterEditUpdate(float a_elapsedTime)
+{
+	Graphics& _graphics = Graphics::Instance();
+	Mouse& _mouse = Input::Instance().GetMouse();
+
+	//スライドの更新処理
+	m_currentSlide->ToolUpdate(a_elapsedTime);
+
+	//テキストウィンドウの更新処理を行う
+	for (auto& _signBoard : m_signBoards)
+	{
+		_signBoard->ToolUpdate(a_elapsedTime, m_currentSlide->m_inputBuffer, m_currentSlide->m_drawableTextLen, { 0.0f,0.0f }, { _graphics.GetScreenWidth(),_graphics.GetScreenHeight() });
 	}
 }
 
@@ -119,6 +134,21 @@ void Chapter::SlideshowRender()
 {
 	m_currentSlide->Render();
 
+	if (m_signBoards.size())
+	{
+		for (int i = 0; i < m_signBoards.size(); i++)
+		{
+			m_signBoards.at(i)->BoardRender();
+		}
+		for (int i = 0; i < m_signBoards.size(); i++)
+		{
+			m_signBoards.at(i)->TextRender(true);
+		}
+	}
+}
+
+void Chapter::CharacterEditRender()
+{
 	if (m_signBoards.size())
 	{
 		for (int i = 0; i < m_signBoards.size(); i++)

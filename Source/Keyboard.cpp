@@ -51,6 +51,8 @@ void Keyboard::Update()
     if (GetAsyncKeyState('8') & 0x8000)_new_input_key |= Key8;
     if (GetAsyncKeyState('9') & 0x8000)_new_input_key |= Key9;
     if (GetAsyncKeyState('0') & 0x8000)_new_input_key |= Key0;
+    if (GetAsyncKeyState(VK_LMENU) & 0x8000)_new_input_key |= LALT;
+    if (GetAsyncKeyState(VK_RMENU) & 0x8000)_new_input_key |= RALT;
 
     input_key[1] = input_key[0];
     input_key[0] = _new_input_key;

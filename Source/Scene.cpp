@@ -9,7 +9,7 @@ std::unique_ptr<FrameBuffer> Scene::m_fb_fade = nullptr;
 Microsoft::WRL::ComPtr<ID3D11PixelShader> Scene::m_fb_ps_fade = nullptr;
 std::unique_ptr<ConstantBuffer<FadeConstants>> Scene::m_cb_fade = nullptr;
 bool Scene::m_initializeChecker = false;
-DirectX::XMFLOAT4 Scene::m_clearColor = { 0.0f,1.0f,0.7f,1.0f };
+DirectX::XMFLOAT4 Scene::m_clearColor = { 0.0f,0.0f,0.0f,1.0f };
 DirectX::XMFLOAT4 Scene::m_backColor = { 0.0f,0.0f,0.0f,1.0f };
 DirectX::XMFLOAT2 Scene::screenSize = {};
 
@@ -26,10 +26,11 @@ void FadeConstants::Initialize(float time, float fadeValue, int inOrOut, int isS
 	this->m_fadeValue = fadeValue;
 	this->m_inOutFlag = inOrOut;
 	this->m_isStart = isStart;
-	if (blackOrWhite >= 0)
+	/*if (blackOrWhite >= 0)
 	{
 		this->m_blackWhite = blackOrWhite;
-	}
+	}*/
+	this->m_blackWhite = blackOrWhite;
 }
 //çXêVèàóù
 bool FadeConstants::Update(float elapsedTime)
@@ -97,7 +98,7 @@ void Scene::CommonImGuiRender(DirectX::XMFLOAT2 a_position, DirectX::XMFLOAT2 a_
 	}
 	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-	ImGui::Begin("Common Elements",nullptr, a_flags);
+	ImGui::Begin("Common Elements", nullptr, a_flags);
 	if (m_index == sc_i(Index::Tool))return;
 	std::string _index_str = "Scene : ";
 	ImGui::Text((_index_str + GetIndexStr()).c_str());
@@ -137,7 +138,10 @@ void Scene::ClearRenderTarget()
 		_clear_color[0] = _clear_color[1] = _clear_color[2] = 1.0f;
 		break;
 	default:
-		_clear_color[0] = m_clearColor.x; _clear_color[1] = m_clearColor.y; _clear_color[2] = m_clearColor.z; _clear_color[3] = m_clearColor.w;
+		_clear_color[0] = m_clearColor.x;
+		_clear_color[1] = m_clearColor.y;
+		_clear_color[2] = m_clearColor.z;
+		_clear_color[3] = m_clearColor.w;
 		break;
 	}
 

@@ -23,9 +23,18 @@ void Character::Update(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewLeftTop, D
 	size.x = size.y / facialSet->GetFacial(0)->GetAspectRation();
 }
 
+void Character::CharacterEditUpdate(DirectX::XMFLOAT2 a_basePosition, DirectX::XMFLOAT2 a_reviewLeftTop, DirectX::XMFLOAT2 a_reviewSize)
+{
+	basePositionY = a_basePosition.y;
+	position.x = a_reviewLeftTop.x + a_reviewSize.x * a_basePosition.x;
+	position.y = a_reviewLeftTop.y + a_reviewSize.y * basePositionY;
+	size.y = a_reviewSize.y * basePositionY;
+	size.x = size.y / facialSet->GetFacial(0)->GetAspectRation();
+}
+
 void Character::Render(BasePoint a_basePoint, DirectX::XMFLOAT4 a_color)
 {
-	facialSet->GetFacial(facialIndex)->Render(a_basePoint, position, size, 0.0f, a_color);
+	facialSet->GetFacial(facialIndex)->Render(a_basePoint, position, { isMirror ? -size.x : size.x , size.y }, 0.0f, a_color);
 }
 
 void Character::ToolOutLineRender(BasePoint a_basePoint, DirectX::XMFLOAT4 a_color)

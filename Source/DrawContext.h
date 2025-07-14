@@ -9,3 +9,9 @@ struct LuminanceConstants
 	float m_bloomIntensity = 1.0f;
 	float m_exposure = 0.8f;
 };
+
+struct CameraConstants
+{
+	DirectX::XMFLOAT4X4 world;
+	DirectX::XMFLOAT4X4 viewProjection;
+};

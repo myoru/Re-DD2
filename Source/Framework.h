@@ -79,7 +79,7 @@ public:
 			//			break;
 			////#endif
 		case WM_MOUSEWHEEL:
-			Input::Instance().GetMouse().SetWheel(GET_WHEEL_DELTA_WPARAM(wparam));
+			Input::Instance().GetMouse().SetWheel(GET_WHEEL_DELTA_WPARAM(wparam) / 120);
 			break;
 		case WM_ENTERSIZEMOVE:
 			graphics.SetIsWindowResizing(true);

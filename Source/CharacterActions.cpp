@@ -59,11 +59,10 @@ void Move::Exit()
 void Move::ShowExecute()
 {
 	std::string label = characterActionStrList[static_cast<int>(CharacterActionList::Move)] + "##MoveHeader" + std::to_string(static_cast<int>(Attribute::Execute));
-	if (ImGui::CollapsingHeader(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::RadioButton("Start", &m_data.index, static_cast<int>(Mode::Start));
-		ImGui::SameLine();
-		ImGui::RadioButton("Goal", &m_data.index, static_cast<int>(Mode::Goal));
+		ImGui::InputFloat("Power", &m_data.power);
+		ImGui::TreePop();
 	}
 }
 
@@ -90,8 +89,8 @@ void Move::GuizmoDecompose(DirectX::XMMATRIX a_taransform)
 	DirectX::XMFLOAT2 _tartget = {};
 
 	DirectX::XMStoreFloat2(&_tartget, _translation);
-	_tartget.x = std::clamp(_tartget.x, FLT_EPSILON, 1.0f);
-	_tartget.y = std::clamp(_tartget.y, FLT_EPSILON, 1.0f);
+	_tartget.x = std::clamp(_tartget.x, -0.5f, 1.5f);
+	_tartget.y = std::clamp(_tartget.y, -0.5f, 1.5f);
 
 	m_goalNormalizePos = _tartget;
 }

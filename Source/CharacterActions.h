@@ -33,7 +33,7 @@ public:
 	};
 
 	Move() = default;
-	Move(CharacterAction::Data a_data) :CharacterAction(a_data){}
+	Move(CharacterAction::Data a_data) :CharacterAction(a_data) { Initialize(); }
 	~Move() {}
 
 	void Initialize()override;

@@ -38,14 +38,16 @@ void SceneTool::Initialize()
 	Scene::SetIndex(sc_i(Scene::Index::Event));
 
 	////定数バッファ
-	m_cb_fade->data.Initialize(5.0f, 1.0f, 1, 1, 0);
+	m_cb_fade->data.Initialize(5.0f, 1.0f, 1, 0, -1);
+
+	m_cb_camera = std::make_unique<ConstantBuffer<CameraConstants>>(_device);
 
 	//スプライトをロード
 	m_spriteBox.emplace_back(std::make_unique<Sprite>(nullptr, BasePoint::LeftTop));
 	m_spriteBox.emplace_back(std::make_unique<Sprite>(L".\\Data\\Sprite\\Number.png"));
 
 	//矩形UI初期化
-	m_rectUIs["LTriangle"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\SlideTriangle.png");
+	m_rectUIs["LTriangle"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\SlideTriangle.png", BasePoint::Left);
 	m_rectUIs["RTriangle"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\SlideTriangle.png");
 	m_rectUIs["Add"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\Add.png", BasePoint::RightTop);
 	m_rectUIs["DustBox"] = std::make_unique<RectUI>(L".\\Data\\Sprite\\DustBox.png", BasePoint::RightBottom);
@@ -60,7 +62,7 @@ void SceneTool::Initialize()
 	//チャプター初期化
 	m_chapter = std::make_unique<Chapter>();
 
-#if 1
+#if 0
 	std::string _input_json_name = "./Data/Json/";
 	_input_json_name += "/Chapter/";
 	_input_json_name += "Test";
@@ -121,6 +123,8 @@ void SceneTool::Update(float a_elapsedTime)
 
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
+	m_camera.Update({ screenSize.x / 2.0f,screenSize.y / 2.0f }, screenSize);
+
 	/*if (_keyboard.GetKeyInput(Keyboard::F3, Keyboard::DownMoment))
 	{
 		SceneManager::Instance().ChangeScene(new SceneLoading(new SceneTool));
@@ -163,7 +167,7 @@ void SceneTool::Update(float a_elapsedTime)
 	switch (m_mode)
 	{
 	case SceneTool::Mode::Edit: //編集モード
-		m_chapter->ToolUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
+		m_chapter->EditUpdate(a_elapsedTime, m_reviewScreenLeftTopPos, m_reviewScreenSize);
 		break;
 	case SceneTool::Mode::Slideshow: //スライドショーモード
 		if (!m_chapter->Update(a_elapsedTime))
@@ -172,17 +176,50 @@ void SceneTool::Update(float a_elapsedTime)
 			m_mode = Mode::EndSlideShow;
 		}
 		break;
+	case SceneTool::Mode::CharacterEdit: //スライドショーモード
+		//分割線
+		LineUpdate();
+		CharacterEditUpdate(a_elapsedTime);
+		break;
 	}
+
+	if (m_chapter->m_currentSlide->m_characters.size() > 0 && m_chapter->m_currentSlide->m_characterIndex >= m_chapter->m_currentSlide->m_characters.size())
+	{
+		m_chapter->m_currentSlide->m_characterIndex = m_chapter->m_currentSlide->m_characters.size() - 1;
+	}
+}
+
+void SceneTool::CharacterEditUpdate(float a_elapsedTime)
+{
+	Mouse& _mouse = Input::Instance().GetMouse();
+
+	m_editCharacter->baseSizeY += (_mouse.GetWheel()) / 10.0f;
+	m_reviewOffsetScale = std::clamp(m_reviewOffsetScale, 0.05f, 5.0f);
+
+	m_chapter->CharacterEditUpdate(a_elapsedTime);
+
+	XMFLOAT2 _nearPos{};
+
+	/*if(_nearPos = SearchNearLinePos(_mouse))
+	m_editCharacter->CharacterEditUpdate(, { 0.0f,0.0f }, screenSize);*/
 }
 
 void SceneTool::ReviewBoardUpdate()
 {
 	Graphics& _graphics = Graphics::Instance();
+	Mouse& _mouse = Input::Instance().GetMouse();
+	Keyboard& _keyboard = Input::Instance().GeKeyboard();
 	using SeparateType = ScreenSeparateLine::SeparateType;
 
 	//編集モードの時のみ
 	if (m_mode == Mode::Edit)
 	{
+		if (_keyboard.GetKeyInput(Keyboard::CTRL, Keyboard::Down))
+		{
+			m_reviewOffsetScale += static_cast<float>(_mouse.GetWheel()) / 10.0f;
+			m_reviewOffsetScale = std::clamp(m_reviewOffsetScale, 0.1f, 0.85f);
+		}
+
 		m_screenSeparateLine.LineMove();//分割線を動かす
 		m_reviewScreenAspectRate = m_reviewScreenNormalSize.y / m_reviewScreenNormalSize.x;//レビュー画面のアスペクト比を更新
 
@@ -229,8 +266,8 @@ void SceneTool::ReviewBoardUpdate()
 		m_blackSpaceSize.x = screenSize.x - (m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f);
 		m_blackSpaceSize.y = (m_screenSeparateLine.linePosition[sc_i(SeparateType::RightHorizontal)].y - m_screenSeparateLine.lineSize[sc_i(SeparateType::RightHorizontal)].y * 0.5f);
 		//レビュー画面を描画しているスペース全体からレビュー画面のサイズを引いた余白の大きさ取得
-		m_remainingBlackSpaceSize.x = m_reviewScreenLeftTopPos.x - (m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f);
-		m_remainingBlackSpaceSize.y = m_reviewScreenLeftTopPos.y;
+		m_remainingBlackSpaceSize.x = m_blackSpaceSize.x * (1.0f - m_reviewOffsetScaleMax) / 2.0f;
+		m_remainingBlackSpaceSize.y = m_blackSpaceSize.y * (1.0f - m_reviewOffsetScaleMax) / 2.0f;
 	}
 }
 
@@ -242,18 +279,18 @@ void SceneTool::RectUIUpdate(float a_elapsedTime)
 
 	//左右の矢印
 	{
-		//位置はreviewBoardの横に
-		m_rectUIs["LTriangle"]->position = { m_reviewScreenLeftTopPos.x - m_remainingBlackSpaceSize.x / 2.0f ,m_reviewScreenPos.y };
-		m_rectUIs["RTriangle"]->position = { m_reviewScreenRightBottomPos.x + m_remainingBlackSpaceSize.x / 2.0f,m_reviewScreenPos.y };
 		//サイズは黒い余白の幅から算出
-		m_rectUIs["LTriangle"]->size.x = m_rectUIs["RTriangle"]->size.x = m_remainingBlackSpaceSize.x * 0.8f;
+		m_rectUIs["LTriangle"]->size.x = m_rectUIs["RTriangle"]->size.x = _minBlackSpace;
 		m_rectUIs["LTriangle"]->size.y = m_rectUIs["RTriangle"]->size.y = m_rectUIs["LTriangle"]->size.x * m_rectUIs["LTriangle"]->sprite->GetAspectRation();
-		float _limitHeight = m_reviewScreenSize.y / 3.0f;
+		//位置はreviewBoardの横に
+		m_rectUIs["LTriangle"]->position = { m_screenSeparateLine.linePosition[sc_i(SeparateType::Vertical)].x + m_screenSeparateLine.lineSize[sc_i(SeparateType::Vertical)].x * 0.5f ,m_reviewScreenPos.y };
+		m_rectUIs["RTriangle"]->position = { screenSize.x - (m_rectUIs["RTriangle"]->size.x * 0.5f),m_reviewScreenPos.y };
+		/*float _limitHeight = m_reviewScreenSize.y / 3.0f;
 		if (m_rectUIs["LTriangle"]->size.y > _limitHeight)
 		{
 			m_rectUIs["LTriangle"]->size.y = m_rectUIs["RTriangle"]->size.y = _limitHeight;
 			m_rectUIs["LTriangle"]->size.x = m_rectUIs["RTriangle"]->size.x = m_rectUIs["LTriangle"]->size.y / m_rectUIs["LTriangle"]->sprite->GetAspectRation();
-		}
+		}*/
 	}
 
 	//デリートボタン
@@ -326,7 +363,7 @@ void SceneTool::RectUIHitCheck()
 void SceneTool::SlideJumpUpdate()
 {
 	//スライドジャンプ用UI全体のサイズ＆位置更新
-	m_slideJumpUISize.x = m_reviewScreenSize.x * 0.9f;
+	m_slideJumpUISize.x = m_blackSpaceSize.x - m_remainingBlackSpaceSize.x * 2.0f;
 	m_slideJumpUISize.y = m_remainingBlackSpaceSize.y * m_slideJumpUIHeightRate;
 	if (m_slideJumpUISize.y > screenSize.y * 0.1f)
 	{
@@ -393,19 +430,19 @@ void SceneTool::SlideJumpHitCheck(float a_elapsedTime)
 
 void SceneTool::LineUpdate()
 {
-	if (m_lines.size())
+	if (m_verticalLines.size())
 	{
 		int _i = 0;
-		float _remainedSpace = 1.0f - lineNormalizeWallDistance;
-		if (m_lines.size() == 1)
+		float _remainedSpace = 1.0f - verticalLineNormalizeWallDistance;
+		if (m_verticalLines.size() == 1)
 		{
-			m_lines[0] = 0.5f;
+			m_verticalLines[0] = 0.5f;
 		}
 		else
 		{
-			float _lineToLineSpace = _remainedSpace / (m_lines.size() - 1);
-			float _lineStartPosition = lineNormalizeWallDistance / 2.0f + (_remainedSpace * (1.0f - lineNormalizeDistance) / 2.0f);
-			for (float& _linePos : m_lines)
+			float _lineToLineSpace = _remainedSpace / (m_verticalLines.size() - 1);
+			float _lineStartPosition = verticalLineNormalizeWallDistance / 2.0f + (_remainedSpace * (1.0f - verticalLineNormalizeDistance) / 2.0f);
+			for (float& _linePos : m_verticalLines)
 			{
 				if (_i == 0)
 				{
@@ -413,12 +450,66 @@ void SceneTool::LineUpdate()
 				}
 				else
 				{
-					_linePos = _lineStartPosition + (_lineToLineSpace * lineNormalizeDistance * _i);
+					_linePos = _lineStartPosition + (_lineToLineSpace * verticalLineNormalizeDistance * _i);
 				}
 				_i++;
 			}
 		}
 	}
+	if (m_horizontalLines.size())
+	{
+		int _i = 0;
+		float _remainedSpace = 1.0f - horizontalLineNormalizeWallDistance;
+		if (m_horizontalLines.size() == 1)
+		{
+			m_horizontalLines[0] = 0.5f;
+		}
+		else
+		{
+			float _lineToLineSpace = _remainedSpace / (m_horizontalLines.size() - 1);
+			float _lineStartPosition = horizontalLineNormalizeWallDistance / 2.0f + (_remainedSpace * (1.0f - horizontalLineNormalizeDistance) / 2.0f);
+			for (float& _linePos : m_horizontalLines)
+			{
+				if (_i == 0)
+				{
+					_linePos = _lineStartPosition;
+				}
+				else
+				{
+					_linePos = _lineStartPosition + (_lineToLineSpace * horizontalLineNormalizeDistance * _i);
+				}
+				_i++;
+			}
+		}
+	}
+}
+
+DirectX::XMFLOAT2 SceneTool::SearchNearLinePos(Mouse& _mouse)
+{
+	XMFLOAT2 _answerPos = { FLT_MAX,FLT_MAX };
+
+	if (_mouse.GetButtonDown() & Mouse::BTN_LEFT)
+	{
+		for (auto& _vertical : m_verticalLines)
+		{
+			if (_mouse.GetPositionX() < _answerPos.x)
+			{
+				_answerPos.x = _mouse.GetPositionX();
+			}
+		}
+
+		for (auto& _horizontal : m_horizontalLines)
+		{
+			if (_mouse.GetPositionY() < _answerPos.y)
+			{
+				_answerPos.y = _mouse.GetPositionY();
+			}
+		}
+	}
+
+	_answerPos.x /= screenSize.x;
+	_answerPos.y /= screenSize.y;
+	return _answerPos;
 }
 
 void SceneTool::Render(float elapsedTime)
@@ -433,8 +524,13 @@ void SceneTool::Render(float elapsedTime)
 	//RenderTargetのClear
 	ClearRenderTarget();
 
+	m_reviewScreenColor.w = 1.0f;
+
 	m_cb_fade->activate(_immediate_context, 3, CB_USAGE::P);
 
+	m_backColor.x = 1.0f - m_reviewScreenColor.x;
+	m_backColor.y = 1.0f - m_reviewScreenColor.y;
+	m_backColor.z = 1.0f - m_reviewScreenColor.z;
 	m_fb_fade->Clear(_immediate_context, m_backColor.x, m_backColor.y, m_backColor.z, m_backColor.w);
 	m_fb_fade->Activate(_immediate_context);
 
@@ -443,7 +539,6 @@ void SceneTool::Render(float elapsedTime)
 		_rendering_state->SetBlendState(_immediate_context, BLEND_STATE::ALPHA);
 		_rendering_state->SetDepthStencilState(_immediate_context, DEPTH_STENCIL_STATE::ZT_OFF_ZW_OFF);
 		_rendering_state->SetRasterizerState(_immediate_context, RASTERIZER_STATE::CULL_NONE);
-
 
 		switch (m_mode)
 		{
@@ -457,20 +552,14 @@ void SceneTool::Render(float elapsedTime)
 		case SceneTool::Mode::EndSlideShow:
 			m_chapter->EndSlideshowRender();
 			break;
+		case SceneTool::Mode::CharacterEdit:
+			LineRender({ 0.0f,0.0f }, screenSize);
+			m_editCharacter->Render(BasePoint::Center);
+			m_chapter->SlideshowRender();
+			break;
 		default:
 			break;
 		}
-
-		/*if (m_lines.size())
-		{
-			for (const float _line : m_lines)
-			{
-				float _posX = m_reviewScreenLeftTopPos.x + m_reviewScreenSize.x * _line;
-				m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::Top, { _posX,m_reviewScreenLeftTopPos.y }, { m_reviewScreenSize.x / 300.0f,m_reviewScreenSize.y }, 0.0f, { 1.0f,0.0f,0.0f,1.0f });
-			}
-			m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::LeftTop, m_reviewScreenLeftTopPos, { m_reviewScreenSize.x * lineNormalizeWallDistance / 2.0f,m_reviewScreenSize.y }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
-			m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::RightTop, { m_reviewScreenRightBottomPos.x,m_reviewScreenLeftTopPos.y }, { m_reviewScreenSize.x * lineNormalizeWallDistance / 2.0f,m_reviewScreenSize.y }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
-		}*/
 
 		//ページ数描画
 		{
@@ -570,6 +659,31 @@ void SceneTool::Render(float elapsedTime)
 			m_spriteBox.at(sc_i(SpriteKind::White))->Render(BasePoint::Center, { slideJumpUIDrawStartPos.x + m_slideJumpUIDrawWidth * i,slideJumpUIDrawStartPos.y },
 				m_slideJumpUIDrawWidth * slideJumpUIScaleRate, m_slideJumpUISize.y * slideJumpUIScaleRate, 0.0f, { i == m_chapter->m_currentSlideIndex ? 1.0f : 0.5f ,i == m_chapter->m_currentSlideIndex ? 1.0f : 0.5f,i == m_chapter->m_currentSlideIndex ? 1.0f : 0.5f,1.0f });
 		}
+	}
+}
+
+void SceneTool::LineRender(DirectX::XMFLOAT2 a_reviewLeftTop, DirectX::XMFLOAT2 a_reviewSize)
+{
+	if (m_verticalLines.size())
+	{
+		for (const float _line : m_verticalLines)
+		{
+			float _posX = a_reviewLeftTop.x + a_reviewSize.x * _line;
+			m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::Top, { _posX,a_reviewLeftTop.y }, { a_reviewSize.x / 300.0f,a_reviewSize.y }, 0.0f, { 1.0f,0.0f,0.0f,1.0f });
+		}
+		m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::LeftTop, a_reviewLeftTop, { a_reviewSize.x * verticalLineNormalizeWallDistance / 2.0f,a_reviewSize.y }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
+		m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::RightTop, { a_reviewLeftTop.x + a_reviewSize.x,a_reviewLeftTop.y }, { a_reviewSize.x * verticalLineNormalizeWallDistance / 2.0f,a_reviewSize.y }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
+	}
+
+	if (m_horizontalLines.size())
+	{
+		for (const float _line : m_horizontalLines)
+		{
+			float _posY = a_reviewLeftTop.y + a_reviewSize.y * _line;
+			m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::Left, { a_reviewLeftTop.x,_posY }, { a_reviewSize.x,a_reviewSize.x / 300.0f }, 0.0f, { 1.0f,0.0f,0.0f,1.0f });
+		}
+		m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::LeftTop, a_reviewLeftTop, { a_reviewSize.x,a_reviewSize.y * horizontalLineNormalizeWallDistance / 2.0f }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
+		m_spriteBox[sc_i(SpriteKind::White)]->Render(BasePoint::LeftBottom, { a_reviewLeftTop.x,a_reviewLeftTop.y + a_reviewSize.y }, { a_reviewSize.x,a_reviewSize.y * horizontalLineNormalizeWallDistance / 2.0f }, 0.0f, { 0.0f,0.0f,0.0f,0.75f });
 	}
 }
 
@@ -745,28 +859,61 @@ void SceneTool::ImGuiOperationWindow()
 			ImGui::TreePop();
 		}
 
-		/*if (ImGui::TreeNodeEx("Lines", ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			if (ImGui::Button("Add Line"))
-			{
-				m_lines.emplace_back();
-			}
-			if (m_lines.size())
-			{
-				if (ImGui::Button("Delete Line"))
-				{
-					m_lines.erase(m_lines.begin());
-				}
+			ImGui::ColorEdit4("ReviewScreen Color", &m_reviewScreenColor.x);
+			ImGui::TreePop();
+		}
 
-				ImGui::InputFloat("Wall Distance", &lineNormalizeWallDistance, 0.01f);
-				lineNormalizeWallDistance = std::clamp(lineNormalizeWallDistance, 0.0f, 1.0f);
-				ImGui::InputFloat("Distance", &lineNormalizeDistance, 0.01f);
-				lineNormalizeDistance = std::clamp(lineNormalizeDistance, 0.0f, 1.0f);
+		if (ImGui::TreeNodeEx("Lines", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::TreeNodeEx("Vertical", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (ImGui::Button("Add Vertical Line"))
+				{
+					m_verticalLines.emplace_back();
+				}
+				if (m_verticalLines.size())
+				{
+					ImGui::SameLine();
+					if (ImGui::Button("Delete Vertical Line"))
+					{
+						m_verticalLines.erase(m_verticalLines.begin());
+					}
+
+					ImGui::InputFloat("Vertical Wall Distance", &verticalLineNormalizeWallDistance, 0.01f);
+					verticalLineNormalizeWallDistance = std::clamp(verticalLineNormalizeWallDistance, 0.0f, 1.0f);
+					ImGui::InputFloat("Vertical Line Distance", &verticalLineNormalizeDistance, 0.01f);
+					verticalLineNormalizeDistance = std::clamp(verticalLineNormalizeDistance, 0.0f, 1.0f);
+				}
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNodeEx("Horizontal", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (ImGui::Button("Add Horizontal Line"))
+				{
+					m_horizontalLines.emplace_back();
+				}
+				if (m_horizontalLines.size())
+				{
+					ImGui::SameLine();
+					if (ImGui::Button("Delete Horizontal Line"))
+					{
+						m_horizontalLines.erase(m_horizontalLines.begin());
+					}
+
+					ImGui::InputFloat("Horizontal Wall Distance", &horizontalLineNormalizeWallDistance, 0.01f);
+					horizontalLineNormalizeWallDistance = std::clamp(horizontalLineNormalizeWallDistance, 0.0f, 1.0f);
+					ImGui::InputFloat("Horizontal Line Distance", &horizontalLineNormalizeDistance, 0.01f);
+					horizontalLineNormalizeDistance = std::clamp(horizontalLineNormalizeDistance, 0.0f, 1.0f);
+				}
+				ImGui::TreePop();
 			}
 
 			ImGui::TreePop();
 		}
-		ImGui::Separator();*/
+		ImGui::Separator();
 	}
 	ImGui::End();
 	ImGui::PopStyleColor(2);
@@ -776,7 +923,7 @@ void SceneTool::ImGuiSlideshowWindow()
 {
 	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always); //ウィンドウの位置決定
 	//ウィンドウの大きさ決定(分割線を基に計算)
-	XMFLOAT2 _windowSize = { screenSize.x * 0.2f,screenSize.y * 0.4f};
+	XMFLOAT2 _windowSize = { screenSize.x * 0.2f,screenSize.y * 0.4f };
 	ImGui::SetNextWindowSize(ImVec2(_windowSize.x, _windowSize.y), ImGuiCond_Always);
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse; //ウィンドウを動かせない＆閉じないようにする
 	//カラーリング決定(灰色ベース)
@@ -1009,6 +1156,22 @@ void SceneTool::ImGuiAllCharactersWindow(float a_buttonWidth)
 			appearingCharacters.emplace_back(std::make_shared<Character>(_facialSetItr->first, _facialSetItr->second));
 		}
 	}
+	ImGui::SameLine();
+	if (ImGui::Button("Edit", ImVec2(a_buttonWidth, 0.0f)))
+	{
+		const std::string& _key = _characterKeys[_currentItem];
+		auto _facialSetItr = std::find_if(
+			_allFacialSet.begin(), _allFacialSet.end(),
+			[&](std::pair<std::string, std::shared_ptr<FacialSet>>& pair)
+			{
+				return pair.first == _key;
+			}
+		);
+
+		m_editCharacter = std::make_shared<Character>(_facialSetItr->first, _facialSetItr->second);
+
+		m_mode = Mode::CharacterEdit;
+	}
 }
 
 void SceneTool::ImGuiBackSpriteWindow(float a_buttonWidth)
@@ -1140,6 +1303,8 @@ void SceneTool::ImGuiCharactersWindow()
 						}
 					}
 
+					ImGui::Checkbox("Mirroring", &_character->isMirror);
+					ImGui::SameLine();
 					std::string _deleteButtonLabel = "Delete Character##" + std::to_string(i);
 					if (ImGui::Button(_deleteButtonLabel.c_str(), ImVec2(_spriteSizeX, 0.0f)))
 					{
@@ -1166,15 +1331,43 @@ void SceneTool::ImGuiEnterWindow()
 	ImGuiWindowFlags _flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 	ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.5f, 0.15f, 0.15f, 1.0f));
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.7f, 0.3f, 0.3f, 1.0f));
-	ImGui::Begin("SlideActions Enter Window", nullptr, _flags);
+	ImGui::Begin("Actions Enter Window", nullptr, _flags);
+	{
+		ImGuiSlideActionsEnter();
+		ImGui::Separator();
+		ImGuiCharacterActionsEnter();
+	}
+	ImGui::End();
+	ImGui::PopStyleColor(2);
+}
+
+void SceneTool::ImGuiSlideActionsEnter()
+{
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.5f, 0.0f, 0.5f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.7f, 0.7f, 0.0f, 0.7f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.9f, 0.0f, 0.7f)); //色変更
+
+	if (ImGui::CollapsingHeader("Slides Actions##Enter", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		for (auto& _action : m_chapter->m_currentSlide->m_actions)
 		{
 			_action->ShowEnter();
 		}
 	}
-	ImGui::End();
-	ImGui::PopStyleColor(2);
+	ImGui::PopStyleColor(3);	//色変更終了処理
+}
+
+void SceneTool::ImGuiCharacterActionsEnter()
+{
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.0f, 0.5f, 0.5f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.7f, 0.0f, 0.7f, 0.7f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.0f, 0.9f, 0.7f)); //色変更
+
+	if (ImGui::CollapsingHeader("Characters Actions##Enter", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+
+	}
+	ImGui::PopStyleColor(3);	//色変更終了処理
 }
 
 void SceneTool::ImGuiExecuteWindow()
@@ -1191,9 +1384,47 @@ void SceneTool::ImGuiExecuteWindow()
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.3f, 0.7f, 0.3f, 1.0f));
 	ImGui::Begin("SlideActions Execute Window", nullptr, _flags);
 	{
+		ImGuiSlideActionsExecute();
+		ImGui::Separator();
+		ImGuiCharacterActionsExecute();
 	}
 	ImGui::End();
 	ImGui::PopStyleColor(2);
+}
+
+void SceneTool::ImGuiSlideActionsExecute()
+{
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.5f, 0.0f, 0.5f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.7f, 0.7f, 0.0f, 0.7f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.9f, 0.0f, 0.7f)); //色変更
+
+	if (ImGui::CollapsingHeader("Slides Actions##Execute", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		for (auto& _action : m_chapter->m_currentSlide->m_actions)
+		{
+			_action->ShowExecute();
+		}
+	}
+	ImGui::PopStyleColor(3);	//色変更終了処理
+}
+
+void SceneTool::ImGuiCharacterActionsExecute()
+{
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.0f, 0.5f, 0.5f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.7f, 0.0f, 0.7f, 0.7f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.0f, 0.9f, 0.7f)); //色変更
+
+	if (ImGui::CollapsingHeader("Characters Actions##Execute", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		for (auto& _character : m_chapter->m_currentSlide->m_characters)
+		{
+			for (auto& _action : _character->m_actions)
+			{
+				_action->ShowExecute();
+			}
+		}
+	}
+	ImGui::PopStyleColor(3);	//色変更終了処理
 }
 
 void SceneTool::ImGuiExitWindow()
@@ -1210,13 +1441,41 @@ void SceneTool::ImGuiExitWindow()
 	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.3f, 0.3f, 0.7f, 1.0f));
 	ImGui::Begin("SlideActions Exit Window", nullptr, _flags);
 	{
+		ImGuiSlideActionsExit();
+		ImGui::Separator();
+		ImGuiCharacterActionsExit();
+	}
+	ImGui::End();
+	ImGui::PopStyleColor(2);
+}
+
+void SceneTool::ImGuiSlideActionsExit()
+{
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.5f, 0.0f, 0.5f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.7f, 0.7f, 0.0f, 0.7f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.9f, 0.0f, 0.7f)); //色変更
+
+	if (ImGui::CollapsingHeader("Slides Actions##Exit", ImGuiTreeNodeFlags_DefaultOpen))
+	{
 		for (auto& _action : m_chapter->m_currentSlide->m_actions)
 		{
 			_action->ShowExit();
 		}
 	}
-	ImGui::End();
-	ImGui::PopStyleColor(2);
+	ImGui::PopStyleColor(3);	//色変更終了処理
+}
+
+void SceneTool::ImGuiCharacterActionsExit()
+{
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.0f, 0.5f, 0.5f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.7f, 0.0f, 0.7f, 0.7f)); //色変更
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.0f, 0.9f, 0.7f)); //色変更
+
+	if (ImGui::CollapsingHeader("Characters Actions##Exit", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+
+	}
+	ImGui::PopStyleColor(3);	//色変更終了処理
 }
 
 void SceneTool::ImGuizmoRender()
@@ -1278,9 +1537,9 @@ void SceneTool::CharacterGuizmo()
 
 		XMStoreFloat2(&m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition, _translation);
 		m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x = std::clamp(
-			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x, FLT_EPSILON, 1.0f);
+			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.x, -0.5f, 1.5f);
 		m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y = std::clamp(
-			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y, FLT_EPSILON, 1.0f);
+			m_chapter->m_currentSlide->m_characters[_selectCharacterIndex]->normalizePosition.y, -0.5f, 1.5f);
 	}
 }
 
@@ -1362,30 +1621,13 @@ void SceneTool::ModeChange()
 			}
 
 		}
-		////F2を押すと最大スケールでレビュー画面で表示される
-		//else if (_keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
-		//{
-		//	m_mode = Mode::Check;
-		//	//最大表示前の分割パラメーターを保存しておく
-		//	for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
-		//	{
-		//		m_screenSeparateLine.beforeRate[i] = m_screenSeparateLine.rate[i];
-		//	}
-		//	m_screenSeparateLine.rate[sc_i(SeparateType::Vertical)] = 0.0f;
-		//	m_screenSeparateLine.rate[sc_i(SeparateType::RightHorizontal)] = 1.0f;
-		//}
+		/*if (_keyboard.GetKeyInput(Keyboard::CTRL, Keyboard::Down) &&
+			_keyboard.GetKeyInput(Keyboard::SHIFT, Keyboard::Down) &&
+			_keyboard.GetKeyInput(Keyboard::LALT, Keyboard::Down))
+		{
+			m_mode = Mode::CharacterEdit;
+		}*/
 		break;
-		//case SceneTool::Mode::Check:
-		//	if (_keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment) || _keyboard.GetKeyInput(Keyboard::F2, Keyboard::DownMoment))
-		//	{
-		//		m_mode = Mode::Edit;
-		//		//保存していたパラメーターに戻す
-		//		for (int i = 0; i < std::size(m_screenSeparateLine.beforeRate); i++)
-		//		{
-		//			m_screenSeparateLine.rate[i] = m_screenSeparateLine.beforeRate[i];
-		//		}
-		//	}
-		//	break;
 	case SceneTool::Mode::Slideshow:
 		if (_keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment) || _keyboard.GetKeyInput(Keyboard::F5, Keyboard::DownMoment))
 		{
@@ -1397,6 +1639,13 @@ void SceneTool::ModeChange()
 		if (_mouse.GetButtonDown() & Mouse::BTN_LEFT || _keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment) || _keyboard.GetKeyInput(Keyboard::F5, Keyboard::DownMoment))
 		{
 			m_chapter->EndSlideShow();
+			m_mode = Mode::Edit;
+		}
+		break;
+	case SceneTool::Mode::CharacterEdit:
+		if (_keyboard.GetKeyInput(Keyboard::ESC, Keyboard::DownMoment))
+		{
+			m_editCharacter = nullptr;
 			m_mode = Mode::Edit;
 		}
 		break;

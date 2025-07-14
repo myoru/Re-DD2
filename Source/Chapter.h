@@ -11,11 +11,13 @@ public:
 	~Chapter() {}
 
 	bool Update(float a_elapsedTime);
-	void ToolUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize);
+	void EditUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize);
+	void CharacterEditUpdate(float a_elapsedTime);
 	void CharactersUpdate(float a_elapsedTime);
 	void ToolCharactersUpdate(float a_elapsedTime, DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize);
 	void StartSlideshow();
 	void SlideshowRender();
+	void CharacterEditRender();
 	void EndSlideshowRender();
 	void ToolRender(DirectX::XMFLOAT2 a_reviewScreenLeftTopPos, DirectX::XMFLOAT2 a_reviewScreenSize, bool a_isFullReview);
 	void EndSlideShow();
